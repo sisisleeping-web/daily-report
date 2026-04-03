@@ -15,6 +15,7 @@ type ProjectSplit = {
 
 type ReportFormData = {
   date: string;
+  city: string;
   names: string[];
   vehicles: string[];
   workContent: string;
@@ -22,6 +23,7 @@ type ReportFormData = {
   leaveTypes: string[];
 };
 
+const TAIWAN_CITIES = ["基隆市", "台北市", "新北市", "桃園市", "新竹市", "新竹縣", "苗栗縣", "台中市", "彰化縣", "南投縣", "雲林縣", "嘉義市", "嘉義縣", "台南市", "高雄市", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣"];
 const NAMES_OPTIONS = ["黃瑋琮", "張振嘉", "薛祺翰", "陳柏任"];
 const VEHICLE_OPTIONS = ["無", "RFV-3993 (CR-V)", "4989-MP (VIOS)", "CBZ-2511(Zinger)", "BWD-3925 (貨車)", "BMZ-6372 (Kuga)", "AXZ-2511 (福斯)"];
 const STAY_OUT_OPTIONS = ["是", "否"];
@@ -81,6 +83,7 @@ export function ReportForm() {
   const { register, handleSubmit, control, reset, getValues } = useForm<ReportFormData>({
     defaultValues: {
       date: new Date().toISOString().split("T")[0],
+      city: "台北市",
       names: [],
       vehicles: [],
       workContent: "",
@@ -95,7 +98,7 @@ export function ReportForm() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workContent: data.workContent }),
+        body: JSON.stringify({ workContent: data.workContent, city: data.city }),
       });
 
       if (!res.ok) {
@@ -133,6 +136,7 @@ export function ReportForm() {
         .from("construction_logs")
         .insert([{
           report_date: data.date,
+          city: data.city,
           names: data.names,
           vehicles: data.vehicles,
           work_content: data.workContent,
@@ -195,14 +199,28 @@ export function ReportForm() {
             onSubmit={handleSubmit(onAnalyze)}
             className="flex flex-col gap-8"
           >
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">日期</label>
-              <input
-                type="date"
-                required
-                {...register("date")}
-                className="w-full md:w-1/2 rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 dark:border-zinc-800 dark:bg-zinc-950/50"
-              />
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">日期</label>
+                <input
+                  type="date"
+                  required
+                  {...register("date")}
+                  className="w-full rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 dark:border-zinc-800 dark:bg-zinc-950/50"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">所在縣市 (幫助 AI 精準定位)</label>
+                <select
+                  required
+                  {...register("city")}
+                  className="w-full rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 dark:border-zinc-800 dark:bg-zinc-950/50 appearance-none"
+                >
+                  <option value="" disabled>請選擇縣市</option>
+                  {TAIWAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
             </div>
 
             <div className="flex flex-col gap-3">

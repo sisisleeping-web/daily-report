@@ -57,16 +57,22 @@ Result:
 
 export async function POST(req: Request) {
   try {
-    const { workContent } = await req.json();
+    const { workContent, city } = await req.json();
 
     if (!workContent) {
       return NextResponse.json({ error: "Missing workContent" }, { status: 400 });
     }
 
+    const dynamicPrompt = `${SYSTEM_PROMPT}
+[Additional Context]
+The user is currently reporting work done in the following city/county: ${city || "Unknown"}.
+When extracting the project_name, you should consider this location context to make it more precise (e.g., if they say "School", you might infer it's a school in that specific city if that helps).
+`;
+
     const response = await client.chat.completions.create({
       model: "claude-3-5-sonnet",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: dynamicPrompt },
         { role: "user", content: workContent }
       ],
       temperature: 0,

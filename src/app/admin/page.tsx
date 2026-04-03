@@ -158,8 +158,13 @@ export default function AdminPage() {
                           <span className="text-sm font-semibold text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/50">
                             {report.report_date}
                           </span>
+                          {report.city && (
+                            <span className="text-xs font-semibold text-zinc-600 bg-zinc-100 dark:text-zinc-400 dark:bg-zinc-800 px-2 py-1.5 rounded-lg">
+                              📍 {report.city}
+                            </span>
+                          )}
                           {report.stay_out && (
-                            <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30 px-2 py-1 rounded-lg border border-amber-100 dark:border-amber-900/50">
+                            <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30 px-2 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900/50">
                               <Tent className="w-3 h-3" /> 外宿
                             </span>
                           )}
