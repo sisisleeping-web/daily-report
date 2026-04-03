@@ -141,7 +141,7 @@ export default function AdminPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-2 bg-white/50 dark:bg-zinc-900/50 p-2 rounded-2xl backdrop-blur-xl border border-white/20 dark:border-zinc-800/50">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-white/50 dark:bg-zinc-900/50 p-2 rounded-2xl backdrop-blur-xl border border-white/20 dark:border-zinc-800/50">
           <button onClick={() => setActiveTab("overview")} className={`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === "overview" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}`}>
             <List className="w-4 h-4" /> 日誌總覽
           </button>
@@ -168,7 +168,7 @@ export default function AdminPage() {
                 ) : (
                   reports.map((report, idx) => (
                     <div key={report.id || idx} className="rounded-3xl bg-white/80 p-6 shadow-sm border border-zinc-200 dark:bg-zinc-900/80 dark:border-zinc-800/50 backdrop-blur-xl flex flex-col gap-4">
-                      <div className="flex flex-wrap flex-col sm:flex-row items-baseline justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4 gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4 gap-4">
                         <div className="flex items-center gap-3">
                           <span className="text-sm font-semibold text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/50">
                             {report.report_date}
@@ -184,7 +184,7 @@ export default function AdminPage() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-semibold uppercase tracking-wider text-zinc-500 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-none border-zinc-100 dark:border-zinc-800">
                           <div className="flex gap-1.5 items-center"><Users className="w-3.5 h-3.5" /> {report.names?.join(", ") || "-"}</div>
                           <div className="flex gap-1.5 items-center"><Car className="w-3.5 h-3.5" /> {report.vehicles?.join(", ") || "-"}</div>
                           <button 
@@ -577,7 +577,7 @@ function EditReportModal({ report, onClose, onRefresh }: { report: any, onClose:
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 max-h-[90vh] overflow-y-auto"
+        className="w-[95%] sm:w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl p-4 sm:p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold flex items-center gap-2"><Edit className="w-5 h-5 text-blue-500" /> 修改日誌</h2>
