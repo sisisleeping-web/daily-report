@@ -223,12 +223,24 @@ export default function AdminPage() {
 
          const projectCosts: Record<string, number> = {};
 
+         const CITY_NAMES = ["基隆市", "台北市", "新北市", "桃園市", "新竹市", "新竹縣", "苗栗縣", "台中市", "彰化縣", "南投縣", "雲林縣", "嘉義市", "嘉義縣", "台南市", "高雄市", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣", "基隆", "台北", "新北", "桃園", "新竹", "苗栗", "台中", "彰化", "南投", "雲林", "嘉義", "台南", "高雄", "屏東", "宜蘭", "花蓮", "台東", "澎湖", "金門", "連江", "北市", "中市", "南市", "高市"];
+
+         const stripCities = (name: string) => {
+           let stripped = name;
+           CITY_NAMES.forEach(c => {
+             stripped = stripped.split(c).join("");
+           });
+           return stripped;
+         };
+
          const shareTwoChars = (str1: string, str2: string) => {
-           if (!str1 || !str2) return false;
-           if (str1.length < 2 || str2.length < 2) return str1 === str2;
-           for (let i = 0; i < str1.length - 1; i++) {
-             const bigram = str1.substring(i, i + 2);
-             if (str2.includes(bigram)) return true;
+           const s1 = stripCities(str1);
+           const s2 = stripCities(str2);
+           if (!s1 || !s2) return false;
+           if (s1.length < 2 || s2.length < 2) return s1 === s2;
+           for (let i = 0; i < s1.length - 1; i++) {
+             const bigram = s1.substring(i, i + 2);
+             if (s2.includes(bigram)) return true;
            }
            return false;
          };
