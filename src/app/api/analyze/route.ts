@@ -70,7 +70,7 @@ When extracting the project_name, you should consider this location context to m
 `;
 
     const response = await client.chat.completions.create({
-      model: "claude-3-5-sonnet",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: dynamicPrompt },
         { role: "user", content: workContent }
