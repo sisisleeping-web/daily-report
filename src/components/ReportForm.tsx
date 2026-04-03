@@ -17,9 +17,9 @@ type ReportFormData = {
 };
 
 const WEATHER_OPTIONS = [
-  { value: "sunny", label: "Sunny", icon: Sun },
-  { value: "cloudy", label: "Cloudy", icon: Cloud },
-  { value: "rainy", label: "Rainy", icon: CloudRain },
+  { value: "sunny", label: "晴天", icon: Sun },
+  { value: "cloudy", label: "陰天", icon: Cloud },
+  { value: "rainy", label: "雨天", icon: CloudRain },
 ];
 
 export function ReportForm() {
@@ -50,11 +50,11 @@ export function ReportForm() {
 
       if (error) {
         console.error("Supabase insert error:", error);
-        alert(`Error saving report: ${error.message}`);
+        alert(`儲存失敗: ${error.message}`);
         return;
       }
 
-      alert("Report saved successfully!");
+      alert("報表儲存成功！");
       reset({
         date: new Date().toISOString().split("T")[0],
         projectName: "",
@@ -64,7 +64,7 @@ export function ReportForm() {
       });
     } catch (err: any) {
       console.error("Unexpected error:", err);
-      alert("An unexpected error occurred while saving.");
+      alert("儲存時發生未知的錯誤。");
     } finally {
       setIsSubmitting(false);
     }
@@ -79,12 +79,12 @@ export function ReportForm() {
       className="w-full max-w-2xl mx-auto flex flex-col gap-8 rounded-3xl bg-white/70 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl border border-white/20 dark:bg-zinc-900/70 dark:border-zinc-800/50"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold tracking-tight">Daily Field Report</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">填寫日報</h2>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Date</label>
+          <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">日期</label>
           <input
             type="date"
             {...register("date")}
@@ -93,10 +93,10 @@ export function ReportForm() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Project Name</label>
+          <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">專案名稱</label>
           <input
             type="text"
-            placeholder="e.g. Skyline Tower"
+            placeholder="如：信義區新建工程"
             {...register("projectName", { required: true })}
             className="w-full rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 focus:ring-black dark:border-zinc-800 dark:bg-zinc-950/50 dark:focus:border-white dark:focus:ring-white"
           />
@@ -104,7 +104,7 @@ export function ReportForm() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Weather Conditions</label>
+        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">天氣狀況</label>
         <Controller
           name="weather"
           control={control}
@@ -130,20 +130,20 @@ export function ReportForm() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Work Accomplished</label>
+        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">今日完成進度</label>
         <textarea
           rows={4}
-          placeholder="Describe the main tasks completed today..."
+          placeholder="描述今天完成的主要工作..."
           {...register("workAccomplished", { required: true })}
           className="w-full resize-none rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 focus:ring-black dark:border-zinc-800 dark:bg-zinc-950/50 dark:focus:border-white dark:focus:ring-white"
         />
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Issues / Delays</label>
+        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">問題 / 延遲原因</label>
         <textarea
           rows={3}
-          placeholder="Any material shortages, delays, or safety incidents?"
+          placeholder="是否有任何物料短缺、延遲或工安問題？"
           {...register("issues")}
           className="w-full resize-none rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 focus:ring-black dark:border-zinc-800 dark:bg-zinc-950/50 dark:focus:border-white dark:focus:ring-white"
         />
@@ -158,11 +158,11 @@ export function ReportForm() {
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-black px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-zinc-800 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:focus:ring-white dark:focus:ring-offset-zinc-950"
         >
           {isSubmitting ? (
-            <span className="animate-pulse">Saving...</span>
+            <span className="animate-pulse">儲存中...</span>
           ) : (
             <>
               <Save className="h-4 w-4" />
-              Save Report
+              儲存報表
             </>
           )}
         </motion.button>
