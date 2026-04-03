@@ -51,6 +51,23 @@ export default function AdminPage() {
     setIsLoading(false);
   };
 
+  const handleDeleteReport = async (id: string) => {
+    if (!confirm("確定要刪除這筆日誌嗎？這將連帶刪除底下所有的案場拆分明細。")) return;
+    try {
+      const { error } = await supabase
+        .from("construction_logs")
+        .delete()
+        .eq("id", id);
+        
+      if (error) throw error;
+      alert("刪除成功！");
+      fetchData(); // Refresh the list
+    } catch (err: any) {
+      console.error(err);
+      alert("刪除失敗：" + (err.message || err));
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans relative flex items-center justify-center p-4 overflow-hidden">
@@ -150,6 +167,13 @@ export default function AdminPage() {
                         <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                           <div className="flex gap-1.5 items-center"><Users className="w-3.5 h-3.5" /> {report.names?.join(", ") || "-"}</div>
                           <div className="flex gap-1.5 items-center"><Car className="w-3.5 h-3.5" /> {report.vehicles?.join(", ") || "-"}</div>
+                          <button 
+                            onClick={() => handleDeleteReport(report.id)} 
+                            className="bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 dark:bg-red-950/30 dark:hover:bg-red-900/50 p-1.5 rounded-lg transition-colors ml-2"
+                            title="刪除此日誌"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                       
