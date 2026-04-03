@@ -194,53 +194,74 @@ export default function AdminPage() {
                       {/* Display AI Splits */}
                       {report.project_splits && report.project_splits.length > 0 && (
                          <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 mt-2">
-                           <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-4">AI 案場拆分明細</h4>
-                           <div className="grid gap-3 sm:grid-cols-2">
-                             {report.project_splits.map((s: any) => (
-                               <div key={s.id} className="p-3 border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl">
-                                 <div className="flex justify-between items-center mb-2">
-                                   <strong className="text-sm text-blue-900 dark:text-blue-300">{s.project_name}</strong>
-                                   <span className="text-xs font-mono bg-white dark:bg-black px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400">w: {s.weight}</span>
-                                 </div>
-                                 <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2">{s.description}</p>
-                               </div>
-                             ))}
-                           </div>
-                         </div>
-                       )}
-                    </div>
-                  ))
-                )}
-              </motion.div>
+                 <h4 className="border-t border-zinc-100 dark:border-zinc-800 pt-6 mt-4 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-4">AI 案場拆分明細</h4>
+                 <div className="grid gap-3 sm:grid-cols-2">
+                   {report.project_splits.map((s: any) => (
+                     <div key={s.id} className="p-3 border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl">
+                       <div className="flex justify-between items-center mb-2">
+                         <strong className="text-sm text-blue-900 dark:text-blue-300">{s.project_name}</strong>
+                         <span className="text-xs font-mono bg-white dark:bg-black px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400">w: {s.weight}</span>
+                       </div>
+                       <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2">{s.description}</p>
+                     </div>
+                   ))}
+                 </div>
+               </div>
             )}
+          </div>
+        ))
+      )}
+    </motion.div>
+  )}
 
-            {activeTab === "analytics" && (
-              <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-6">
-                 {/* Computation Logic for analytics */}
-                 {(() => {
-                   const wageMap:Record<string, number> = {};
-                   engineers.forEach(e => { wageMap[e.name] = Number(e.daily_wage) || 0; });
+  {activeTab === "analytics" && (
+    <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-6">
+       {/* Computation Logic for analytics */}
+       {(() => {
+         const wageMap:Record<string, number> = {};
+         engineers.forEach(e => { wageMap[e.name] = Number(e.daily_wage) || 0; });
 
-                   const projectCosts: Record<string, number> = {};
-                   
-                   reports.forEach(r => {
-                      const dailyCost = (r.names || []).reduce((acc: number, name: string) => acc + (wageMap[name] || 0), 0);
-                      (r.project_splits || []).forEach((s: any) => {
-                        const splitCost = dailyCost * Number(s.weight);
-                        if (!projectCosts[s.project_name]) projectCosts[s.project_name] = 0;
-                        projectCosts[s.project_name] += splitCost;
-                      });
-                   });
+         const projectCosts: Record<string, number> = {};
 
-                   return (
-                     <div className="grid md:grid-cols-2 gap-6">
-                       <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl">
-                         <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><BarChart3 className="text-blue-500 w-5 h-5"/> 案場總人事成本估算</h3>
-                         <div className="flex flex-col gap-3">
-                           {Object.entries(projectCosts).sort((a,b)=>b[1]-a[1]).map(([pName, cost]) => (
-                             <div key={pName} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
-                               <span className="text-sm font-medium">{pName}</span>
-                               <span className="text-sm font-mono font-semibold text-zinc-900 dark:text-white">NT$ {cost.toLocaleString()}</span>
+         const shareTwoChars = (str1: string, str2: string) => {
+           if (!str1 || !str2) return false;
+           if (str1.length < 2 || str2.length < 2) return str1 === str2;
+           for (let i = 0; i < str1.length - 1; i++) {
+             const bigram = str1.substring(i, i + 2);
+             if (str2.includes(bigram)) return true;
+           }
+           return false;
+         };
+         
+         reports.forEach(r => {
+            const dailyCost = (r.names || []).reduce((acc: number, name: string) => acc + (wageMap[name] || 0), 0);
+            (r.project_splits || []).forEach((s: any) => {
+              const splitCost = dailyCost * Number(s.weight);
+              let targetKey = s.project_name || "未命名案場";
+
+              // 尋找是否已經有「包含相同連續2字元」的案場名稱被記錄了
+              const existingKeys = Object.keys(projectCosts);
+              for (const exKey of existingKeys) {
+                if (shareTwoChars(exKey, targetKey)) {
+                  targetKey = exKey; // 合併至已存在的案場
+                  break;
+                }
+              }
+
+              if (!projectCosts[targetKey]) projectCosts[targetKey] = 0;
+              projectCosts[targetKey] += splitCost;
+            });
+         });
+
+         return (
+           <div className="grid md:grid-cols-2 gap-6">
+             <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl">
+               <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><BarChart3 className="text-blue-500 w-5 h-5"/> 案場總人事成本估算</h3>
+               <div className="flex flex-col gap-3">
+                 {Object.entries(projectCosts).sort((a,b)=>b[1]-a[1]).map(([pName, cost]) => (
+                   <div key={pName} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
+                     <span className="text-sm font-medium">{pName}</span>
+                     <span className="text-sm font-mono font-semibold text-zinc-900 dark:text-white">NT$ {cost.toLocaleString()}</span>
                              </div>
                            ))}
                            {Object.keys(projectCosts).length === 0 && <span className="text-xs text-zinc-400">尚無資料</span>}
