@@ -9,9 +9,17 @@ import { Lock, ArrowLeft, Users, Car, CheckCircle2, Tent, CalendarClock, Setting
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "monthly" | "settings">("overview");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
 
   const [reports, setReports] = useState<any[]>([]);
+
+  useEffect(() => {
+    const months = Array.from(new Set(reports.map(r => r.report_date?.substring(0, 7)).filter(Boolean))).sort().reverse();
+    if (months.length > 0 && !selectedMonth) {
+      setSelectedMonth(months[0]);
+    }
+  }, [reports, selectedMonth]);
   const [engineers, setEngineers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -136,6 +144,9 @@ export default function AdminPage() {
           <button onClick={() => setActiveTab("analytics")} className={`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === "analytics" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}`}>
             <BarChart3 className="w-4 h-4" /> 成本儀表板
           </button>
+          <button onClick={() => setActiveTab("monthly")} className={`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === "monthly" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}`}>
+            <CalendarClock className="w-4 h-4" /> 月報表
+          </button>
           <button onClick={() => setActiveTab("settings")} className={`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === "settings" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}`}>
             <Settings className="w-4 h-4" /> 基礎設定
           </button>
@@ -246,7 +257,7 @@ export default function AdminPage() {
          };
          
          reports.forEach(r => {
-            const dailyCost = (r.names || []).reduce((acc: number, name: string) => acc + (wageMap[name] || 0), 0);
+            const dailyCost = (r.names || []).reduce((acc: number, name: string) => acc + (wageMap[name] || 0), 0) + (r.stay_out ? 250 : 0);
             (r.project_splits || []).forEach((s: any) => {
               const splitCost = dailyCost * Number(s.weight);
               let targetKey = s.project_name || "未命名案場";
@@ -311,6 +322,132 @@ export default function AdminPage() {
                      </div>
                    );
                  })()}
+              </motion.div>
+            )}
+
+            {activeTab === "monthly" && (
+              <motion.div key="monthly" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-6">
+                {(() => {
+                  const availableMonths = Array.from(new Set(reports.map(r => r.report_date?.substring(0, 7)).filter(Boolean))).sort().reverse();
+                  const filteredReports = reports.filter(r => r.report_date?.startsWith(selectedMonth));
+                   
+                  const cityCount: Record<string, number> = {};
+                  const projectCount: Record<string, number> = {};
+                  const vehicleCount: Record<string, number> = {};
+
+                  const CITY_NAMES = ["基隆市", "台北市", "新北市", "桃園市", "新竹市", "新竹縣", "苗栗縣", "台中市", "彰化縣", "南投縣", "雲林縣", "嘉義市", "嘉義縣", "台南市", "高雄市", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣", "基隆", "台北", "新北", "桃園", "新竹", "苗栗", "台中", "彰化", "南投", "雲林", "嘉義", "台南", "高雄", "屏東", "宜蘭", "花蓮", "台東", "澎湖", "金門", "連江", "北市", "中市", "南市", "高市"];
+
+                  const stripCities = (name: string) => {
+                    let stripped = name;
+                    CITY_NAMES.forEach(c => { stripped = stripped.split(c).join(""); });
+                    return stripped;
+                  };
+
+                  const shareTwoChars = (str1: string, str2: string) => {
+                    const s1 = stripCities(str1);
+                    const s2 = stripCities(str2);
+                    if (!s1 || !s2) return false;
+                    if (s1.length < 2 || s2.length < 2) return s1 === s2;
+                    for (let i = 0; i < s1.length - 1; i++) {
+                      if (s2.includes(s1.substring(i, i + 2))) return true;
+                    }
+                    return false;
+                  };
+
+                  filteredReports.forEach(r => {
+                    if (r.city) {
+                      cityCount[r.city] = (cityCount[r.city] || 0) + 1;
+                    }
+
+                    (r.vehicles || []).forEach((v: string) => {
+                      vehicleCount[v] = (vehicleCount[v] || 0) + 1;
+                    });
+
+                    const projectsInReport = new Set<string>();
+                    (r.project_splits || []).forEach((s: any) => {
+                       let targetKey = s.project_name || "未命名案場";
+                       const existingKeys = Object.keys(projectCount).concat(Array.from(projectsInReport));
+                       let found = false;
+                       for (const exKey of existingKeys) {
+                         if (shareTwoChars(exKey, targetKey)) {
+                           projectsInReport.add(exKey);
+                           found = true;
+                           break;
+                         }
+                       }
+                       if (!found) projectsInReport.add(targetKey);
+                    });
+                    
+                    projectsInReport.forEach(p => {
+                       projectCount[p] = (projectCount[p] || 0) + 1;
+                    });
+                  });
+
+                  return (
+                    <div className="flex flex-col gap-6">
+                      <div className="flex items-center justify-between bg-white/50 dark:bg-zinc-900/50 p-4 rounded-3xl border border-white/20 dark:border-zinc-800/50 backdrop-blur-xl">
+                        <h3 className="font-bold flex items-center gap-2"><CalendarClock className="w-5 h-5 text-indigo-500" /> 月度統計</h3>
+                        <select 
+                          value={selectedMonth} 
+                          onChange={e => setSelectedMonth(e.target.value)}
+                          className="bg-zinc-100 dark:bg-zinc-800 border-none text-sm font-mono rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-black dark:focus:ring-white cursor-pointer"
+                        >
+                          {availableMonths.length === 0 && <option value="">無資料</option>}
+                          {availableMonths.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                       
+                      <div className="grid md:grid-cols-3 gap-6">
+                        <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl flex flex-col">
+                          <h4 className="text-sm font-bold mb-4 text-zinc-500 uppercase">縣市出勤次數</h4>
+                          <div className="flex flex-col gap-2 flex-1 overflow-y-auto max-h-[300px] pr-2">
+                            {Object.entries(cityCount).sort((a,b)=>b[1]-a[1]).map(([city, count]) => (
+                               <div key={city} className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
+                                 <span className="text-sm font-medium">{city}</span>
+                                 <div className="bg-white dark:bg-black px-2 py-1 rounded shadow-sm border border-zinc-100 dark:border-zinc-800">
+                                   <span className="text-sm font-mono font-bold">{count}</span><span className="text-xs text-zinc-500 ml-1">次</span>
+                                 </div>
+                               </div>
+                            ))}
+                            {Object.keys(cityCount).length === 0 && <div className="text-sm text-zinc-400 mt-2">目前無資料</div>}
+                          </div>
+                        </div>
+                         
+                        <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl flex flex-col">
+                          <h4 className="text-sm font-bold mb-4 text-zinc-500 uppercase">案場出勤次數</h4>
+                          <div className="flex flex-col gap-2 flex-1 overflow-y-auto max-h-[300px] pr-2">
+                            {Object.entries(projectCount).sort((a,b)=>b[1]-a[1]).map(([proj, count]) => (
+                               <div key={proj} className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
+                                 <span className="text-sm font-medium">{proj}</span>
+                                 <div className="bg-white dark:bg-black px-2 py-1 rounded shadow-sm border border-zinc-100 dark:border-zinc-800">
+                                   <span className="text-sm font-mono font-bold">{count}</span><span className="text-xs text-zinc-500 ml-1">次</span>
+                                 </div>
+                               </div>
+                            ))}
+                            {Object.keys(projectCount).length === 0 && <div className="text-sm text-zinc-400 mt-2">目前無資料</div>}
+                          </div>
+                        </div>
+
+                        <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl flex flex-col">
+                          <h4 className="text-sm font-bold mb-4 text-zinc-500 uppercase">車輛使用次數</h4>
+                          <div className="flex flex-col gap-2 flex-1 overflow-y-auto max-h-[300px] pr-2">
+                            {Object.entries(vehicleCount).sort((a,b)=>b[1]-a[1]).map(([veh, count]) => (
+                               <div key={veh} className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
+                                 <span className="text-sm font-medium">{veh}</span>
+                                 <div className="bg-white dark:bg-black px-2 py-1 rounded shadow-sm border border-zinc-100 dark:border-zinc-800">
+                                   <span className="text-sm font-mono font-bold">{count}</span><span className="text-xs text-zinc-500 ml-1">次</span>
+                                 </div>
+                               </div>
+                            ))}
+                            {Object.keys(vehicleCount).length === 0 && <div className="text-sm text-zinc-400 mt-2">目前無資料</div>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </motion.div>
             )}
 
