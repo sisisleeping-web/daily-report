@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Lock, ArrowLeft, Users, Car, CheckCircle2, Tent, CalendarClock, Settings, BarChart3, List, Save, Trash2, Plus } from "lucide-react";
+import { Lock, ArrowLeft, Users, Car, CheckCircle2, Tent, CalendarClock, Settings, BarChart3, List, Save, Trash2, Plus, Edit, X } from "lucide-react";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -13,6 +13,7 @@ export default function AdminPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>("");
 
   const [reports, setReports] = useState<any[]>([]);
+  const [editingReport, setEditingReport] = useState<any>(null);
 
   useEffect(() => {
     const months = Array.from(new Set(reports.map(r => r.report_date?.substring(0, 7)).filter(Boolean))).sort().reverse();
@@ -118,6 +119,9 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans p-4 sm:p-8 relative overflow-y-auto">
+      {editingReport && (
+        <EditReportModal report={editingReport} onClose={() => setEditingReport(null)} onRefresh={fetchData} />
+      )}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/5 blur-[100px] pointer-events-none fixed" />
       
       <div className="w-full max-w-6xl mx-auto relative z-10 pt-4 flex flex-col gap-6">
@@ -183,6 +187,13 @@ export default function AdminPage() {
                         <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                           <div className="flex gap-1.5 items-center"><Users className="w-3.5 h-3.5" /> {report.names?.join(", ") || "-"}</div>
                           <div className="flex gap-1.5 items-center"><Car className="w-3.5 h-3.5" /> {report.vehicles?.join(", ") || "-"}</div>
+                          <button 
+                            onClick={() => setEditingReport(report)} 
+                            className="bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-700 dark:bg-blue-950/30 dark:hover:bg-blue-900/50 p-1.5 rounded-lg transition-colors ml-2"
+                            title="編輯此日誌"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
                           <button 
                             onClick={() => handleDeleteReport(report.id)} 
                             className="bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 dark:bg-red-950/30 dark:hover:bg-red-900/50 p-1.5 rounded-lg transition-colors ml-2"
@@ -518,6 +529,98 @@ function SettingsPanel({ engineers, onRefresh }: { engineers: any[], onRefresh: 
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function EditReportModal({ report, onClose, onRefresh }: { report: any, onClose: () => void, onRefresh: () => void }) {
+  const [date, setDate] = useState(report.report_date || "");
+  const [city, setCity] = useState(report.city || "");
+  const [stayOut, setStayOut] = useState(!!report.stay_out);
+  const [namesStr, setNamesStr] = useState((report.names || []).join(", "));
+  const [vehiclesStr, setVehiclesStr] = useState((report.vehicles || []).join(", "));
+  const [workContent, setWorkContent] = useState(report.work_content || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const TAIWAN_CITIES = ["基隆市", "台北市", "新北市", "桃園市", "新竹市", "新竹縣", "苗栗縣", "台中市", "彰化縣", "南投縣", "雲林縣", "嘉義市", "嘉義縣", "台南市", "高雄市", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣"];
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const names = namesStr.split(",").map((s: string) => s.trim()).filter(Boolean);
+    const vehicles = vehiclesStr.split(",").map((s: string) => s.trim()).filter(Boolean);
+    
+    const { error } = await supabase
+      .from("construction_logs")
+      .update({
+        report_date: date,
+        city: city,
+        stay_out: stayOut,
+        names: names,
+        vehicles: vehicles,
+        work_content: workContent
+      })
+      .eq("id", report.id);
+      
+    setIsSaving(false);
+    if (error) {
+      alert("更新失敗：" + error.message);
+    } else {
+      alert("更新成功！");
+      onRefresh();
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold flex items-center gap-2"><Edit className="w-5 h-5 text-blue-500" /> 修改日誌</h2>
+          <button onClick={onClose} className="p-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full transition-colors"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 mb-1 block">日期</label>
+            <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 bg-zinc-50 dark:bg-zinc-950 text-sm outline-none" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 mb-1 block">縣市</label>
+            <select value={city} onChange={e=>setCity(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 bg-zinc-50 dark:bg-zinc-950 text-sm outline-none appearance-none">
+              <option value="">(未填寫)</option>
+              {TAIWAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-3 rounded-xl cursor-pointer" onClick={() => setStayOut(!stayOut)}>
+            <input type="checkbox" id="stay_out" checked={stayOut} onChange={e=>setStayOut(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 pointer-events-none" />
+            <label className="text-sm font-medium pointer-events-none">是否外宿 (若勾選將增加單日人事成本計算)</label>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 mb-1 block">出勤人員 (用逗號隔開)</label>
+            <input type="text" value={namesStr} onChange={e=>setNamesStr(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 bg-zinc-50 dark:bg-zinc-950 text-sm outline-none" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 mb-1 block">車輛 (用逗號隔開)</label>
+            <input type="text" value={vehiclesStr} onChange={e=>setVehiclesStr(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 bg-zinc-50 dark:bg-zinc-950 text-sm outline-none" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 mb-1 block">施工內容</label>
+            <textarea rows={4} value={workContent} onChange={e=>setWorkContent(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 bg-zinc-50 dark:bg-zinc-950 text-sm outline-none resize-none" />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+          <button onClick={onClose} className="px-5 py-2 text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 rounded-xl transition-all">取消</button>
+          <button onClick={handleSave} disabled={isSaving} className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl transition-all flex items-center gap-2">
+            {isSaving ? "儲存中..." : <><Save className="w-4 h-4" /> 儲存修改</>}
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
