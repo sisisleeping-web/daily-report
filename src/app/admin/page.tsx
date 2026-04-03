@@ -30,10 +30,10 @@ export default function AdminPage() {
     // Fetch logs with splits
     const { data: logData, error: logError } = await supabase
       .from("construction_logs")
-      .select(\`
+      .select(`
         *,
         project_splits (*)
-      \`)
+      `)
       .order("report_date", { ascending: false });
     
     if (logError) console.error("Error fetching reports:", logError);
@@ -113,13 +113,13 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex items-center gap-2 bg-white/50 dark:bg-zinc-900/50 p-2 rounded-2xl backdrop-blur-xl border border-white/20 dark:border-zinc-800/50">
-          <button onClick={() => setActiveTab("overview")} className={\`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 \${activeTab === "overview" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}\`}>
+          <button onClick={() => setActiveTab("overview")} className={`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === "overview" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}`}>
             <List className="w-4 h-4" /> 日誌總覽
           </button>
-          <button onClick={() => setActiveTab("analytics")} className={\`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 \${activeTab === "analytics" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}\`}>
+          <button onClick={() => setActiveTab("analytics")} className={`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === "analytics" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}`}>
             <BarChart3 className="w-4 h-4" /> 成本儀表板
           </button>
-          <button onClick={() => setActiveTab("settings")} className={\`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 \${activeTab === "settings" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}\`}>
+          <button onClick={() => setActiveTab("settings")} className={`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === "settings" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}`}>
             <Settings className="w-4 h-4" /> 基礎設定
           </button>
         </div>
@@ -178,7 +178,7 @@ export default function AdminPage() {
                              ))}
                            </div>
                          </div>
-                      )}
+                       )}
                     </div>
                   ))
                 )}
@@ -189,10 +189,6 @@ export default function AdminPage() {
               <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-6">
                  {/* Computation Logic for analytics */}
                  {(() => {
-                   // Calculate Total Costs per Project
-                   // Total Cost = Sum (For each report -> For each split -> weight * Sum(Engineer[name].wage))
-                   
-                   // Build wage dictionary
                    const wageMap:Record<string, number> = {};
                    engineers.forEach(e => { wageMap[e.name] = Number(e.daily_wage) || 0; });
 
@@ -226,7 +222,6 @@ export default function AdminPage() {
                          <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Users className="text-purple-500 w-5 h-5"/> 工程師出勤摘要 (本期)</h3>
                          <div className="flex flex-col gap-3">
                            {engineers.map(e => {
-                             // count days, stay_outs
                              let days = 0;
                              let stayOuts = 0;
                              reports.forEach(r => {
