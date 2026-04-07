@@ -65,7 +65,7 @@ export async function POST(req: Request) {
 
     const dynamicPrompt = `${SYSTEM_PROMPT}
 [Additional Context]
-The user is currently reporting work done in the following city/county: ${city || "Unknown"}.
+The user is currently reporting work done in the following city/county: ${Array.isArray(city) ? city.join(', ') : (city || "Unknown")}.
 When extracting the project_name, you should consider this location context to make it more precise (e.g., if they say "School", you might infer it's a school in that specific city if that helps).
 `;
 

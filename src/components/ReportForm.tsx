@@ -15,7 +15,7 @@ type ProjectSplit = {
 
 type ReportFormData = {
   date: string;
-  city: string;
+  city: string[];
   names: string[];
   vehicles: string[];
   workContent: string;
@@ -83,7 +83,7 @@ export function ReportForm() {
   const { register, handleSubmit, control, reset, getValues } = useForm<ReportFormData>({
     defaultValues: {
       date: new Date().toISOString().split("T")[0],
-      city: "台北市",
+      city: ["台北市"],
       names: [],
       vehicles: [],
       workContent: "",
@@ -210,16 +210,18 @@ export function ReportForm() {
                 />
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">所在縣市 (幫助 AI 精準定位)</label>
-                <select
-                  required
-                  {...register("city")}
-                  className="w-full rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 dark:border-zinc-800 dark:bg-zinc-950/50 appearance-none"
-                >
-                  <option value="" disabled>請選擇縣市</option>
-                  {TAIWAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+              <div className="flex flex-col gap-3">
+                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">所在縣市 (可複選，幫助 AI 精準定位)</label>
+                <div className="max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
+                  <Controller
+                    name="city"
+                    control={control}
+                    rules={{ required: true }}
+                    render={({ field }) => (
+                      <CheckboxGroup options={TAIWAN_CITIES} selected={field.value} onChange={field.onChange} />
+                    )}
+                  />
+                </div>
               </div>
             </div>
 
