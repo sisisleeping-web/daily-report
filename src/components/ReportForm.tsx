@@ -334,14 +334,18 @@ export function ReportForm() {
                         className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                     </div>
-                    <div className="flex flex-col gap-1.5 w-24 shrink-0">
+                    <div className="flex flex-col gap-1.5 w-28 shrink-0">
                       <label className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">案場縣市</label>
-                      <input 
-                        type="text" 
+                      <select 
                         value={split.city || ""}
                         onChange={(e) => handleUpdateSplit(idx, 'city', e.target.value)}
-                        className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
+                        className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                      >
+                        <option value="" disabled>請選擇</option>
+                        {getValues('city')?.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex flex-col gap-1.5 w-24 shrink-0">
                       <label className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">工時權重</label>
