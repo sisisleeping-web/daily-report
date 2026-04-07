@@ -504,6 +504,10 @@ function SettingsPanel({ engineers, onRefresh }: { engineers: any[], onRefresh: 
   const [newEngName, setNewEngName] = useState("");
   const [newEngWage, setNewEngWage] = useState("");
 
+  const [editingEngId, setEditingEngId] = useState<string | null>(null);
+  const [editEngName, setEditEngName] = useState("");
+  const [editEngWage, setEditEngWage] = useState("");
+
   const handleAddEngineer = async () => {
     if (!newEngName) return;
     const { error } = await supabase.from("engineers").insert([{ name: newEngName, daily_wage: Number(newEngWage) || 0 }]);
@@ -521,6 +525,26 @@ function SettingsPanel({ engineers, onRefresh }: { engineers: any[], onRefresh: 
     onRefresh();
   };
 
+  const startEditEng = (e: any) => {
+    setEditingEngId(e.id);
+    setEditEngName(e.name);
+    setEditEngWage(e.daily_wage?.toString() || "0");
+  };
+
+  const cancelEditEng = () => {
+    setEditingEngId(null);
+  };
+
+  const handleSaveEng = async (id: string) => {
+    if (!editEngName) return;
+    const { error } = await supabase.from("engineers").update({ name: editEngName, daily_wage: Number(editEngWage) || 0 }).eq("id", id);
+    if (error) alert("Error: " + error.message);
+    else {
+      setEditingEngId(null);
+      onRefresh();
+    }
+  };
+
   return (
     <div className="bg-white/80 dark:bg-zinc-900/80 p-6 sm:p-8 flex flex-col gap-8 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl">
       <div>
@@ -528,29 +552,49 @@ function SettingsPanel({ engineers, onRefresh }: { engineers: any[], onRefresh: 
         <p className="text-xs text-zinc-500 mb-6">這些資料將用於計算每日派工成本，請確實填寫。</p>
         
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-          {engineers.map(e => (
-            <div key={e.id} className="relative group bg-zinc-50 dark:bg-zinc-950/50 p-4 border border-zinc-100 dark:border-zinc-900 rounded-2xl flex justify-between items-center">
-              <div>
-                <strong className="text-sm block">{e.name}</strong>
-                <span className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-1 block">NT$ {e.daily_wage} / 日</span>
+          {engineers.map(e => {
+            if (editingEngId === e.id) {
+              return (
+                <div key={e.id} className="bg-zinc-50 dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-zinc-700 rounded-2xl flex flex-col gap-2 shadow-sm">
+                  <input type="text" value={editEngName} onChange={(ev)=>setEditEngName(ev.target.value)} className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500 transition-colors" placeholder="姓名" />
+                  <input type="number" value={editEngWage} onChange={(ev)=>setEditEngWage(ev.target.value)} className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500 transition-colors" placeholder="日薪" />
+                  <div className="flex gap-2 mt-1">
+                    <button onClick={cancelEditEng} className="flex-1 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg py-1.5 text-xs font-medium transition-colors">取消</button>
+                    <button onClick={() => handleSaveEng(e.id)} className="flex-1 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-lg py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1"><Save className="w-3.5 h-3.5" /> 儲存</button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={e.id} className="relative group bg-zinc-50 dark:bg-zinc-950/50 p-4 border border-zinc-100 dark:border-zinc-900 rounded-2xl flex justify-between items-center transition-all hover:border-zinc-200 dark:hover:border-zinc-800">
+                <div>
+                  <strong className="text-sm block text-zinc-900 dark:text-zinc-100">{e.name}</strong>
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-1 block">NT$ {e.daily_wage} / 日</span>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all">
+                  <button onClick={() => startEditEng(e)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all" title="修改">
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDeleteEng(e.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all" title="刪除">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <button onClick={() => handleDeleteEng(e.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 items-end bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 border-dashed">
           <div className="w-full">
             <label className="text-xs text-zinc-500 mb-1 block">工程師姓名</label>
-            <input type="text" value={newEngName} onChange={e=>setNewEngName(e.target.value)} className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm outline-none" />
+            <input type="text" value={newEngName} onChange={e=>setNewEngName(e.target.value)} className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm outline-none focus:border-zinc-300 dark:focus:border-zinc-700 transition-colors" />
           </div>
           <div className="w-full">
             <label className="text-xs text-zinc-500 mb-1 block">日薪 (新台幣)</label>
-            <input type="number" value={newEngWage} onChange={e=>setNewEngWage(e.target.value)} className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm outline-none" />
+            <input type="number" value={newEngWage} onChange={e=>setNewEngWage(e.target.value)} className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm outline-none focus:border-zinc-300 dark:focus:border-zinc-700 transition-colors" />
           </div>
-          <button onClick={handleAddEngineer} className="w-full sm:w-auto shrink-0 bg-black text-white dark:bg-white dark:text-black px-6 py-2 rounded-xl text-sm font-semibold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 h-[38px]">
+          <button onClick={handleAddEngineer} className="w-full sm:w-auto shrink-0 bg-black text-white dark:bg-white dark:text-black px-6 py-2 rounded-xl text-sm font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 h-[38px]">
             <Plus className="w-4 h-4" /> 新增
           </button>
         </div>
