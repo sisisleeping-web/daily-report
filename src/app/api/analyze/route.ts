@@ -28,6 +28,7 @@ Rules:
   "splits": [
     {
       "project_name": "extracted project name",
+      "city": "the specific city this project is in",
       "weight": 0.5,
       "description": "the specific work done for this project"
     }
@@ -43,11 +44,13 @@ Result:
   "splits": [
     {
       "project_name": "南港軟體園區",
+      "city": "台北市",
       "weight": 0.5,
       "description": "拉網路線"
     },
     {
       "project_name": "信義A13",
+      "city": "台北市",
       "weight": 0.5,
       "description": "修冷氣"
     }

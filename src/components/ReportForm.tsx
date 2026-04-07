@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 
 type ProjectSplit = {
   project_name: string;
+  city: string;
   weight: number;
   description: string;
 };
@@ -116,7 +117,7 @@ export function ReportForm() {
       console.error(err);
       alert("AI 分析失敗，請手動確認或重試！將直接進入確認畫面。");
       // Fallback
-      setSplits([{ project_name: "未分類案場", weight: 1.0, description: data.workContent }]);
+      setSplits([{ project_name: "未分類案場", city: Array.isArray(data.city) ? data.city[0] || "" : data.city || "", weight: 1.0, description: data.workContent }]);
       setStep(3);
     }
   };
@@ -152,6 +153,7 @@ export function ReportForm() {
       const splitInserts = splits.map(s => ({
         log_id: logRecord.id,
         project_name: s.project_name,
+        city: s.city,
         weight: Number(s.weight),
         description: s.description
       }));
@@ -333,6 +335,15 @@ export function ReportForm() {
                       />
                     </div>
                     <div className="flex flex-col gap-1.5 w-24 shrink-0">
+                      <label className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">案場縣市</label>
+                      <input 
+                        type="text" 
+                        value={split.city || ""}
+                        onChange={(e) => handleUpdateSplit(idx, 'city', e.target.value)}
+                        className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5 w-24 shrink-0">
                       <label className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">工時權重</label>
                       <input 
                         type="number" 
@@ -359,7 +370,7 @@ export function ReportForm() {
               
               <button 
                 type="button" 
-                onClick={() => setSplits([...splits, { project_name: "新增案場", weight: 0.1, description: "" }])}
+                onClick={() => setSplits([...splits, { project_name: "新增案場", city: "", weight: 0.1, description: "" }])}
                 className="text-sm font-medium text-zinc-500 hover:text-black dark:text-zinc-400 py-2 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl hover:border-black dark:hover:border-white transition-all text-center"
               >
                 + 手動增加拆分項目

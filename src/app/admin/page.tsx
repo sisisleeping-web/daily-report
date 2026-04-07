@@ -173,9 +173,9 @@ export default function AdminPage() {
                           <span className="text-sm font-semibold text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/50">
                             {report.report_date}
                           </span>
-                          {report.city && (
+                          {report.city && Array.isArray(report.city) && report.city.length > 0 && (
                             <span className="text-xs font-semibold text-zinc-600 bg-zinc-100 dark:text-zinc-400 dark:bg-zinc-800 px-2 py-1.5 rounded-lg">
-                              📍 {report.city}
+                              📍 {report.city.join(', ')}
                             </span>
                           )}
                           {report.stay_out && (
@@ -221,7 +221,10 @@ export default function AdminPage() {
                    {report.project_splits.map((s: any) => (
                      <div key={s.id} className="p-3 border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl">
                        <div className="flex justify-between items-center mb-2">
-                         <strong className="text-sm text-blue-900 dark:text-blue-300">{s.project_name}</strong>
+                         <span className="text-sm font-bold text-blue-900 dark:text-blue-300">
+                           {s.project_name} 
+                           {s.city && <span className="ml-2 text-xs font-normal text-blue-700/80 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">📍{s.city}</span>}
+                         </span>
                          <span className="text-xs font-mono bg-white dark:bg-black px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400">w: {s.weight}</span>
                        </div>
                        <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2">{s.description}</p>
@@ -366,9 +369,7 @@ export default function AdminPage() {
                   };
 
                   filteredReports.forEach(r => {
-                    if (r.city) {
-                      cityCount[r.city] = (cityCount[r.city] || 0) + 1;
-                    }
+
 
                     (r.vehicles || []).forEach((v: string) => {
                       vehicleCount[v] = (vehicleCount[v] || 0) + 1;
@@ -376,6 +377,9 @@ export default function AdminPage() {
 
                     const projectsInReport = new Set<string>();
                     (r.project_splits || []).forEach((s: any) => {
+                       if (s.city) {
+                         cityCount[s.city] = (cityCount[s.city] || 0) + 1;
+                       }
                        let targetKey = s.project_name || "未命名案場";
                        const existingKeys = Object.keys(projectCount).concat(Array.from(projectsInReport));
                        let found = false;
@@ -535,7 +539,7 @@ function SettingsPanel({ engineers, onRefresh }: { engineers: any[], onRefresh: 
 
 function EditReportModal({ report, onClose, onRefresh }: { report: any, onClose: () => void, onRefresh: () => void }) {
   const [date, setDate] = useState(report.report_date || "");
-  const [city, setCity] = useState(report.city || "");
+  const [cityStr, setCityStr] = useState((report.city || []).join(", "));
   const [stayOut, setStayOut] = useState(!!report.stay_out);
   const [namesStr, setNamesStr] = useState((report.names || []).join(", "));
   const [vehiclesStr, setVehiclesStr] = useState((report.vehicles || []).join(", "));
@@ -553,7 +557,7 @@ function EditReportModal({ report, onClose, onRefresh }: { report: any, onClose:
       .from("construction_logs")
       .update({
         report_date: date,
-        city: city,
+        city: cityStr.split(",").map((s: string) => s.trim()).filter(Boolean),
         stay_out: stayOut,
         names: names,
         vehicles: vehicles,
@@ -590,11 +594,8 @@ function EditReportModal({ report, onClose, onRefresh }: { report: any, onClose:
             <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 bg-zinc-50 dark:bg-zinc-950 text-sm outline-none" />
           </div>
           <div>
-            <label className="text-xs font-semibold text-zinc-500 mb-1 block">縣市</label>
-            <select value={city} onChange={e=>setCity(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 bg-zinc-50 dark:bg-zinc-950 text-sm outline-none appearance-none">
-              <option value="">(未填寫)</option>
-              {TAIWAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <label className="text-xs font-semibold text-zinc-500 mb-1 block">縣市 (用逗號隔開)</label>
+            <input type="text" value={cityStr} onChange={e=>setCityStr(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 bg-zinc-50 dark:bg-zinc-950 text-sm outline-none" />
           </div>
           <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-3 rounded-xl cursor-pointer" onClick={() => setStayOut(!stayOut)}>
             <input type="checkbox" id="stay_out" checked={stayOut} onChange={e=>setStayOut(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 pointer-events-none" />
