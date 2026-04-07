@@ -369,6 +369,13 @@ export default function AdminPage() {
                   };
 
                   filteredReports.forEach(r => {
+                    if (Array.isArray(r.city)) {
+                      r.city.forEach((c: string) => {
+                        if (c) cityCount[c] = (cityCount[c] || 0) + 1;
+                      });
+                    } else if (typeof r.city === 'string' && r.city) {
+                      cityCount[r.city] = (cityCount[r.city] || 0) + 1;
+                    }
 
 
                     (r.vehicles || []).forEach((v: string) => {
@@ -377,9 +384,6 @@ export default function AdminPage() {
 
                     const projectsInReport = new Set<string>();
                     (r.project_splits || []).forEach((s: any) => {
-                       if (s.city) {
-                         cityCount[s.city] = (cityCount[s.city] || 0) + 1;
-                       }
                        let targetKey = s.project_name || "未命名案場";
                        const existingKeys = Object.keys(projectCount).concat(Array.from(projectsInReport));
                        let found = false;
