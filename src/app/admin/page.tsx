@@ -11,6 +11,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "monthly" | "settings">("overview");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [overviewMonth, setOverviewMonth] = useState<string>("");
 
   const [reports, setReports] = useState<any[]>([]);
   const [editingReport, setEditingReport] = useState<any>(null);
@@ -163,10 +164,22 @@ export default function AdminPage() {
           <AnimatePresence mode="wait">
             {activeTab === "overview" && (
               <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-6">
-                {reports.length === 0 ? (
+                <div className="flex justify-end mb-2">
+                  <select 
+                    value={overviewMonth} 
+                    onChange={e => setOverviewMonth(e.target.value)}
+                    className="bg-white/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                  >
+                    <option value="">全部月份</option>
+                    {Array.from(new Set(reports.map(r => r.report_date?.substring(0, 7)).filter(Boolean))).sort().reverse().map(m => (
+                      <option key={String(m)} value={String(m)}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                {reports.filter(r => !overviewMonth || r.report_date?.startsWith(overviewMonth)).length === 0 ? (
                   <div className="text-center py-20 text-zinc-500 bg-white/50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/50 backdrop-blur-xl">目前沒有任何日誌記錄</div>
                 ) : (
-                  reports.map((report, idx) => (
+                  reports.filter(r => !overviewMonth || r.report_date?.startsWith(overviewMonth)).map((report, idx) => (
                     <div key={report.id || idx} className="rounded-3xl bg-white/80 p-6 shadow-sm border border-zinc-200 dark:bg-zinc-900/80 dark:border-zinc-800/50 backdrop-blur-xl flex flex-col gap-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4 gap-4">
                         <div className="flex items-center gap-3">
@@ -435,7 +448,12 @@ export default function AdminPage() {
                         </div>
                          
                         <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl flex flex-col">
-                          <h4 className="text-sm font-bold mb-4 text-zinc-500 uppercase">案場出勤次數</h4>
+                          <h4 className="text-sm font-bold mb-4 text-zinc-500 uppercase flex items-center justify-between">
+                            案場出勤次數
+                            <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-2 py-1 rounded text-xs lowercase font-mono shadow-sm">
+                              總計: {Object.values(projectCount).reduce((a, b) => a + b, 0)} 次
+                            </span>
+                          </h4>
                           <div className="flex flex-col gap-2 flex-1 overflow-y-auto max-h-[300px] pr-2">
                             {Object.entries(projectCount).sort((a,b)=>b[1]-a[1]).map(([proj, count]) => (
                                <div key={proj} className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
