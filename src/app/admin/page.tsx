@@ -11,7 +11,7 @@ import { buildVehicleCostMap, buildWageMap, reportCost, reportMatches, reportsTo
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "monthly" | "settings">("overview");
@@ -50,7 +50,8 @@ export default function AdminPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const loginEmail = username.trim().toLowerCase() === "wei" ? "admin@daily-report.app" : username.trim();
+    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     if (error || data.user?.app_metadata?.role !== "admin") {
       if (data.session) await supabase.auth.signOut();
       setLoginError("帳號、密碼錯誤或此帳號沒有主管權限");
@@ -133,10 +134,10 @@ export default function AdminPage() {
           
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="主管 Email"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="主管帳號"
               autoComplete="username"
               required
               className="w-full rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 focus:ring-black text-center dark:border-zinc-800 dark:bg-zinc-950/50"

@@ -27,7 +27,7 @@ def main() -> None:
         password = os.environ.get("E2E_ADMIN_PASSWORD")
         if not email or not password:
             raise RuntimeError("E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD are required")
-        page.get_by_placeholder("主管 Email").fill(email)
+        page.get_by_placeholder("主管帳號").fill(os.environ.get("E2E_ADMIN_USERNAME", "wei"))
         page.get_by_placeholder("請輸入密碼").fill(password)
         page.get_by_role("button", name="登入").click()
         page.get_by_role("heading", name="智慧管理後台").wait_for()
