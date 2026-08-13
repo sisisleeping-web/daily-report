@@ -34,6 +34,12 @@ def main() -> None:
         page.get_by_role("button", name="成本儀表板").click()
         page.get_by_text("案場總成本分配").wait_for()
         page.screenshot(path=str(output / "dashboard-mobile.png"), full_page=True)
+        page.get_by_role("button", name="人員／車輛管理").click()
+        page.get_by_role("heading", name="人員清單管理").wait_for()
+        page.get_by_role("button", name="新增", exact=True).first.wait_for()
+        page.get_by_role("button", name="修改", exact=True).first.wait_for()
+        page.get_by_role("button", name="移除", exact=True).first.wait_for()
+        page.screenshot(path=str(output / "settings-mobile.png"), full_page=True)
         browser.close()
 
     relevant = [error for error in errors if "favicon" not in error.lower()]

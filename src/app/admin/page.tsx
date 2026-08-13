@@ -201,7 +201,7 @@ export default function AdminPage() {
             <CalendarClock className="w-4 h-4" /> 月報表
           </button>
           <button onClick={() => setActiveTab("settings")} className={`flex-1 p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === "settings" ? "bg-white dark:bg-zinc-800 shadow-sm text-black dark:text-white" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-300"}`}>
-            <Settings className="w-4 h-4" /> 基礎設定
+            <Settings className="w-4 h-4" /> 人員／車輛管理
           </button>
         </div>
 
@@ -637,8 +637,8 @@ function SettingsPanel({ engineers, vehicleCosts, onRefresh }: { engineers: Engi
   return (
     <div className="bg-white/80 dark:bg-zinc-900/80 p-6 sm:p-8 flex flex-col gap-8 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl">
       <div>
-        <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Users className="w-5 h-5 text-blue-500" /> 工程師與日薪名單</h3>
-        <p className="text-xs text-zinc-500 mb-6">這些資料將用於計算每日派工成本，請確實填寫。</p>
+        <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Users className="w-5 h-5 text-blue-500" /> 人員清單管理</h3>
+        <p className="text-xs text-zinc-500 mb-6">可在此新增、修改或移除人員；日薪會用於每日派工成本計算。</p>
         
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           {engineers.map(e => {
@@ -662,11 +662,11 @@ function SettingsPanel({ engineers, vehicleCosts, onRefresh }: { engineers: Engi
                   <span className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-1 block">NT$ {e.daily_wage} / 日</span>
                 </div>
                 <div className="flex items-center gap-1 transition-all sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                  <button onClick={() => startEditEng(e)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all" title="修改">
-                    <Edit className="w-4 h-4" />
+                  <button onClick={() => startEditEng(e)} className="flex items-center gap-1 rounded-xl p-2 text-xs font-medium text-blue-500 transition-all hover:bg-blue-50 dark:hover:bg-blue-900/30" title="修改">
+                    <Edit className="w-4 h-4" /> 修改
                   </button>
-                  <button onClick={() => handleDeleteEng(e.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all" title="刪除">
-                    <Trash2 className="w-4 h-4" />
+                  <button onClick={() => handleDeleteEng(e.id)} className="flex items-center gap-1 rounded-xl p-2 text-xs font-medium text-red-500 transition-all hover:bg-red-50 dark:hover:bg-red-900/30" title="移除">
+                    <Trash2 className="w-4 h-4" /> 移除
                   </button>
                 </div>
               </div>
