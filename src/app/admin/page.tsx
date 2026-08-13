@@ -5,8 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Lock, ArrowLeft, Users, Car, CheckCircle2, Tent, CalendarClock, Settings, BarChart3, List, Save, Trash2, Plus, Edit, X, Download, Search } from "lucide-react";
-import type { ConstructionLog, Engineer, ProjectSplit } from "@/lib/report-types";
-import { reportMatches, reportsToCsv } from "@/lib/report-utils";
+import type { ConstructionLog, Engineer, ProjectSplit, VehicleCost } from "@/lib/report-types";
+import { buildVehicleCostMap, buildWageMap, reportCost, reportMatches, reportsToCsv, vehicleCost } from "@/lib/report-utils";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -26,6 +26,7 @@ export default function AdminPage() {
     }
   }, [reports, selectedMonth]);
   const [engineers, setEngineers] = useState<Engineer[]>([]);
+  const [vehicleCosts, setVehicleCosts] = useState<VehicleCost[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -60,6 +61,10 @@ export default function AdminPage() {
     
     if (engError) console.error("Error fetching engineers:", engError);
     else setEngineers(engData || []);
+
+    const { data: vehicleData, error: vehicleError } = await supabase.from("vehicle_costs").select("*").order("name");
+    if (vehicleError) console.error("Error fetching vehicle costs:", vehicleError);
+    else setVehicleCosts(vehicleData || []);
 
     setIsLoading(false);
   };
@@ -185,11 +190,11 @@ export default function AdminPage() {
                   </select>
                   <button type="button" onClick={() => {
                     const filtered = reports.filter((report) => (!overviewMonth || report.report_date?.startsWith(overviewMonth)) && reportMatches(report, searchQuery));
-                    const blob = new Blob([reportsToCsv(filtered, engineers)], { type: "text/csv;charset=utf-8" });
+                    const blob = new Blob([reportsToCsv(filtered, engineers, vehicleCosts)], { type: "text/csv;charset=utf-8" });
                     const url = URL.createObjectURL(blob);
                     const anchor = document.createElement("a");
                     anchor.href = url;
-                    anchor.download = `工地日報-${overviewMonth || "全部"}.csv`;
+                    anchor.download = `工作日誌-${overviewMonth || "全部"}.csv`;
                     anchor.click();
                     URL.revokeObjectURL(url);
                   }} className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black">
@@ -277,10 +282,12 @@ export default function AdminPage() {
     <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-6">
        {/* Computation Logic for analytics */}
        {(() => {
-         const wageMap:Record<string, number> = {};
-         engineers.forEach(e => { wageMap[e.name] = Number(e.daily_wage) || 0; });
+         const wageMap = buildWageMap(engineers);
+         const vehicleCostMap = buildVehicleCostMap(vehicleCosts);
 
          const projectCosts: Record<string, number> = {};
+         const personCosts: Record<string, number> = {};
+         const vehicleCostsByName: Record<string, number> = {};
 
          const CITY_NAMES = ["基隆市", "台北市", "新北市", "桃園市", "新竹市", "新竹縣", "苗栗縣", "台中市", "彰化縣", "南投縣", "雲林縣", "嘉義市", "嘉義縣", "台南市", "高雄市", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣", "基隆", "台北", "新北", "桃園", "新竹", "苗栗", "台中", "彰化", "南投", "雲林", "嘉義", "台南", "高雄", "屏東", "宜蘭", "花蓮", "台東", "澎湖", "金門", "連江", "北市", "中市", "南市", "高市"];
 
@@ -305,7 +312,9 @@ export default function AdminPage() {
          };
          
          reports.forEach(r => {
-            const dailyCost = (r.names || []).reduce((acc: number, name: string) => acc + (wageMap[name] || 0), 0) + (r.stay_out ? 250 : 0);
+            const dailyCost = reportCost(r, wageMap) + vehicleCost(r, vehicleCostMap);
+            r.names.forEach((name) => { personCosts[name] = (personCosts[name] || 0) + (wageMap[name] || 0); });
+            r.vehicles.forEach((name) => { vehicleCostsByName[name] = (vehicleCostsByName[name] || 0) + (vehicleCostMap[name] || 0); });
             (r.project_splits || []).forEach((s: ProjectSplit) => {
               const splitCost = dailyCost * Number(s.weight);
               let targetKey = s.project_name || "未命名案場";
@@ -325,19 +334,35 @@ export default function AdminPage() {
          });
 
          return (
-           <div className="grid md:grid-cols-2 gap-6">
+           <div className="grid md:grid-cols-3 gap-6">
              <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl">
-               <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><BarChart3 className="text-blue-500 w-5 h-5"/> 案場總人事成本估算</h3>
+               <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><BarChart3 className="text-blue-500 w-5 h-5"/> 案場總成本分配</h3>
                <div className="flex flex-col gap-3">
                  {Object.entries(projectCosts).sort((a,b)=>b[1]-a[1]).map(([pName, cost]) => (
                    <div key={pName} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
                      <span className="text-sm font-medium">{pName}</span>
                      <span className="text-sm font-mono font-semibold text-zinc-900 dark:text-white">NT$ {cost.toLocaleString()}</span>
-                             </div>
-                           ))}
-                           {Object.keys(projectCosts).length === 0 && <span className="text-xs text-zinc-400">尚無資料</span>}
-                         </div>
-                       </div>
+                   </div>
+                 ))}
+                 {Object.keys(projectCosts).length === 0 && <span className="text-xs text-zinc-400">尚無資料</span>}
+               </div>
+             </div>
+
+             <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl">
+               <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Users className="text-emerald-500 w-5 h-5"/> 人員成本分配</h3>
+               <div className="flex flex-col gap-3">
+                 {Object.entries(personCosts).sort((a,b)=>b[1]-a[1]).map(([name, cost]) => <div key={name} className="flex justify-between rounded-xl bg-zinc-50 p-3 text-sm dark:bg-zinc-950/50"><span>{name}</span><strong>NT$ {cost.toLocaleString()}</strong></div>)}
+                 {Object.keys(personCosts).length === 0 && <span className="text-xs text-zinc-400">尚無資料</span>}
+               </div>
+             </div>
+
+             <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl">
+               <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Car className="text-amber-500 w-5 h-5"/> 車輛成本分配</h3>
+               <div className="flex flex-col gap-3">
+                 {Object.entries(vehicleCostsByName).sort((a,b)=>b[1]-a[1]).map(([name, cost]) => <div key={name} className="flex justify-between rounded-xl bg-zinc-50 p-3 text-sm dark:bg-zinc-950/50"><span>{name}</span><strong>NT$ {cost.toLocaleString()}</strong></div>)}
+                 {Object.keys(vehicleCostsByName).length === 0 && <span className="text-xs text-zinc-400">請先在基礎設定填寫車輛每日成本</span>}
+               </div>
+             </div>
                        
                        <div className="bg-white/80 dark:bg-zinc-900/80 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm backdrop-blur-xl">
                          <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Users className="text-purple-500 w-5 h-5"/> 工程師出勤摘要 (本期)</h3>
@@ -511,7 +536,7 @@ export default function AdminPage() {
 
             {activeTab === "settings" && (
               <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-6">
-                <SettingsPanel engineers={engineers} onRefresh={fetchData} />
+                <SettingsPanel engineers={engineers} vehicleCosts={vehicleCosts} onRefresh={fetchData} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -521,13 +546,15 @@ export default function AdminPage() {
   );
 }
 
-function SettingsPanel({ engineers, onRefresh }: { engineers: Engineer[], onRefresh: () => void }) {
+function SettingsPanel({ engineers, vehicleCosts, onRefresh }: { engineers: Engineer[], vehicleCosts: VehicleCost[], onRefresh: () => void }) {
   const [newEngName, setNewEngName] = useState("");
   const [newEngWage, setNewEngWage] = useState("");
 
   const [editingEngId, setEditingEngId] = useState<string | null>(null);
   const [editEngName, setEditEngName] = useState("");
   const [editEngWage, setEditEngWage] = useState("");
+  const [newVehicleName, setNewVehicleName] = useState("");
+  const [newVehicleCost, setNewVehicleCost] = useState("");
 
   const handleAddEngineer = async () => {
     if (!newEngName) return;
@@ -618,6 +645,18 @@ function SettingsPanel({ engineers, onRefresh }: { engineers: Engineer[], onRefr
           <button onClick={handleAddEngineer} className="w-full sm:w-auto shrink-0 bg-black text-white dark:bg-white dark:text-black px-6 py-2 rounded-xl text-sm font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 h-[38px]">
             <Plus className="w-4 h-4" /> 新增
           </button>
+        </div>
+      </div>
+      <div className="border-t border-zinc-200 pt-8 dark:border-zinc-800">
+        <h3 className="mb-1 flex items-center gap-2 text-lg font-bold"><Car className="h-5 w-5 text-amber-500" /> 車輛每日成本</h3>
+        <p className="mb-6 text-xs text-zinc-500">油資、折舊、租金等請換算為每個出勤日的成本；同日多車會分別累加。</p>
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+          {vehicleCosts.map((vehicle) => <div key={vehicle.id} className="flex items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-900 dark:bg-zinc-950/50"><span className="text-sm font-medium">{vehicle.name}</span><div className="flex items-center gap-2"><strong className="text-sm">NT$ {Number(vehicle.daily_cost).toLocaleString()}</strong><button onClick={async () => { if (!confirm("刪除此車輛成本設定？")) return; await supabase.from("vehicle_costs").delete().eq("id", vehicle.id); onRefresh(); }} className="text-red-500"><Trash2 className="h-4 w-4" /></button></div></div>)}
+        </div>
+        <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-4 sm:flex-row dark:border-zinc-800 dark:bg-zinc-900/50">
+          <input value={newVehicleName} onChange={(event) => setNewVehicleName(event.target.value)} placeholder="車輛名稱" className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm dark:border-zinc-800 dark:bg-black" />
+          <input type="number" min="0" value={newVehicleCost} onChange={(event) => setNewVehicleCost(event.target.value)} placeholder="每日成本" className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm dark:border-zinc-800 dark:bg-black" />
+          <button onClick={async () => { if (!newVehicleName.trim()) return; const { error } = await supabase.from("vehicle_costs").insert({ name: newVehicleName.trim(), daily_cost: Number(newVehicleCost) || 0 }); if (error) alert(error.message); else { setNewVehicleName(""); setNewVehicleCost(""); onRefresh(); } }} className="rounded-xl bg-black px-5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black"><Plus className="mr-1 inline h-4 w-4" />新增</button>
         </div>
       </div>
     </div>

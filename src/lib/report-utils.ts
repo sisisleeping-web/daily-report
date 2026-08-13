@@ -1,4 +1,4 @@
-import type { ConstructionLog, Engineer, ProjectSplit } from "./report-types";
+import type { ConstructionLog, Engineer, ProjectSplit, VehicleCost } from "./report-types";
 
 const WEIGHT_TOLERANCE = 0.001;
 
@@ -23,6 +23,14 @@ export function buildWageMap(engineers: Engineer[]): Record<string, number> {
   return Object.fromEntries(engineers.map((engineer) => [engineer.name, Number(engineer.daily_wage) || 0]));
 }
 
+export function buildVehicleCostMap(vehicles: VehicleCost[]): Record<string, number> {
+  return Object.fromEntries(vehicles.map((vehicle) => [vehicle.name, Number(vehicle.daily_cost) || 0]));
+}
+
+export function vehicleCost(report: ConstructionLog, vehicleCostMap: Record<string, number>): number {
+  return report.vehicles.reduce((sum, name) => sum + (vehicleCostMap[name] ?? 0), 0);
+}
+
 export function reportMatches(report: ConstructionLog, query: string): boolean {
   const needle = query.trim().toLocaleLowerCase("zh-TW");
   if (!needle) return true;
@@ -41,9 +49,10 @@ function csvCell(value: unknown): string {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
 }
 
-export function reportsToCsv(reports: ConstructionLog[], engineers: Engineer[]): string {
+export function reportsToCsv(reports: ConstructionLog[], engineers: Engineer[], vehicles: VehicleCost[] = []): string {
   const wageMap = buildWageMap(engineers);
-  const header = ["日期", "縣市", "出勤人員", "車輛", "外宿", "假別", "施工內容", "案場拆分", "當日人事成本"];
+  const vehicleCostMap = buildVehicleCostMap(vehicles);
+  const header = ["日期", "縣市", "出勤人員", "車輛", "外宿", "假別", "工作內容", "案場拆分", "人員成本", "車輛成本", "總成本"];
   const rows = reports.map((report) => [
     report.report_date,
     report.city.join("、"),
@@ -54,6 +63,8 @@ export function reportsToCsv(reports: ConstructionLog[], engineers: Engineer[]):
     report.work_content,
     report.project_splits.map((split) => `${split.project_name}(${split.weight})`).join("；"),
     reportCost(report, wageMap),
+    vehicleCost(report, vehicleCostMap),
+    reportCost(report, wageMap) + vehicleCost(report, vehicleCostMap),
   ]);
   return `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n")}`;
 }

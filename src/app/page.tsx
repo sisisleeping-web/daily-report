@@ -11,7 +11,7 @@ export default function Home() {
       <main className="relative z-10 flex flex-col min-h-screen items-center justify-center p-4 py-12 sm:p-8">
         <div className="w-full max-w-2xl mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">工地日報表</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">工作日誌</h1>
             <p className="text-zinc-500 dark:text-zinc-400 mt-1">記錄今日的工作進度與狀況。</p>
           </div>
           <Link href="/admin" className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors">

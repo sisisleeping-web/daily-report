@@ -1,4 +1,4 @@
-# 工地日報表完整收斂規格
+# 工作日誌完整收斂規格
 
 ## Objective
 
@@ -21,4 +21,11 @@
 
 ## Known external gate
 
-Supabase 專案目前回報 `INACTIVE` 且 SQL connection timeout；正式 DB 權限收斂、資料 E2E 與部署需在專案恢復後執行，不能以假資料宣稱完成。
+Supabase 專案已獲 owner 授權恢復；正式 DB 權限收斂、資料 E2E 與部署必須在備份、migration 與回滾路徑確認後執行。
+
+## Phase 2 owner requirements
+
+- 產品名稱統一為「工作日誌」。
+- main 更新後自動部署上線，部署失敗需可追蹤。
+- 人員名單支援新增、修改與刪除；歷史日誌保留姓名快照。
+- 報表同時輸出人員、車輛與案場成本分配；車輛成本需有可設定的每日成本，不以次數冒充成本。

@@ -13,7 +13,7 @@ def main() -> None:
         page = browser.new_page(viewport={"width": 390, "height": 844})
         page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
         page.goto("http://127.0.0.1:3100", wait_until="domcontentloaded")
-        page.get_by_role("heading", name="工地日報表").wait_for()
+        page.get_by_role("heading", name="工作日誌", exact=True).wait_for()
         page.wait_for_timeout(600)
         page.screenshot(path=str(output / "home-mobile.png"), full_page=True)
 
@@ -21,6 +21,12 @@ def main() -> None:
         page.get_by_role("heading", name="主管登入").wait_for()
         page.wait_for_timeout(600)
         page.screenshot(path=str(output / "admin-mobile.png"), full_page=True)
+        page.get_by_placeholder("請輸入密碼").fill("1234")
+        page.get_by_role("button", name="登入").click()
+        page.get_by_role("heading", name="智慧管理後台").wait_for()
+        page.get_by_role("button", name="成本儀表板").click()
+        page.get_by_text("案場總成本分配").wait_for()
+        page.screenshot(path=str(output / "dashboard-mobile.png"), full_page=True)
         browser.close()
 
     relevant = [error for error in errors if "favicon" not in error.lower()]

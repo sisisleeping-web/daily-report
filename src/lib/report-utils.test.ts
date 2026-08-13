@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ConstructionLog, Engineer } from "./report-types";
-import { reportCost, reportMatches, reportsToCsv, validateSplits } from "./report-utils";
+import { reportCost, reportMatches, reportsToCsv, validateSplits, vehicleCost } from "./report-utils";
 
 const report: ConstructionLog = {
   id: "1",
@@ -29,6 +29,10 @@ describe("validateSplits", () => {
 describe("report helpers", () => {
   it("calculates wage plus stay-out allowance", () => {
     expect(reportCost(report, { 王小明: 2500 })).toBe(2750);
+  });
+
+  it("calculates configured vehicle costs", () => {
+    expect(vehicleCost(report, { 貨車: 1200 })).toBe(1200);
   });
 
   it("searches nested project and content fields", () => {

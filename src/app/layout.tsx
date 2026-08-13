@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "工地日報表",
+  title: "工作日誌",
   description: "施工紀錄、案場工時與成本管理",
 };
 

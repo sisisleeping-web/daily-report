@@ -26,6 +26,13 @@ export type Engineer = {
   created_at?: string;
 };
 
+export type VehicleCost = {
+  id: string;
+  name: string;
+  daily_cost: number;
+  created_at?: string;
+};
+
 export type ReportFormData = {
   date: string;
   city: string[];

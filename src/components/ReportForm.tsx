@@ -203,7 +203,7 @@ export function ReportForm() {
   return (
     <div className="w-full max-w-2xl mx-auto rounded-3xl bg-white/70 p-8 shadow-xl backdrop-blur-xl border border-white/20 dark:bg-zinc-900/70 dark:border-zinc-800/50 min-h-[500px]">
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-100 dark:border-zinc-800/50">
-        <h2 className="text-2xl font-semibold tracking-tight">填寫施工日誌</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">填寫工作日誌</h2>
         <div className="flex gap-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className={cn(
@@ -283,10 +283,10 @@ export function ReportForm() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">施工內容</label>
+              <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">工作內容</label>
               <textarea
                 rows={4}
-                placeholder="請描述今日施工內容，AI 將會自動為您分析案場並計算出勤成本..."
+                placeholder="請描述今日工作內容，AI 將會自動為您分析案場並計算出勤成本..."
                 required
                 {...register("workContent")}
                 className="w-full resize-none rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 dark:border-zinc-800 dark:bg-zinc-950/50"
