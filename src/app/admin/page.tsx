@@ -569,8 +569,9 @@ function SettingsPanel({ engineers, vehicleCosts, onRefresh }: { engineers: Engi
 
   const handleDeleteEng = async (id: string) => {
     if(!confirm("刪除此工程師？")) return;
-    await supabase.from("engineers").delete().eq("id", id);
-    onRefresh();
+    const { error } = await supabase.from("engineers").delete().eq("id", id);
+    if (error) alert("刪除失敗：" + error.message);
+    else onRefresh();
   };
 
   const startEditEng = (e: Engineer) => {
@@ -620,7 +621,7 @@ function SettingsPanel({ engineers, vehicleCosts, onRefresh }: { engineers: Engi
                   <strong className="text-sm block text-zinc-900 dark:text-zinc-100">{e.name}</strong>
                   <span className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-1 block">NT$ {e.daily_wage} / 日</span>
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all">
+                <div className="flex items-center gap-1 transition-all sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                   <button onClick={() => startEditEng(e)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all" title="修改">
                     <Edit className="w-4 h-4" />
                   </button>
@@ -651,7 +652,7 @@ function SettingsPanel({ engineers, vehicleCosts, onRefresh }: { engineers: Engi
         <h3 className="mb-1 flex items-center gap-2 text-lg font-bold"><Car className="h-5 w-5 text-amber-500" /> 車輛每日成本</h3>
         <p className="mb-6 text-xs text-zinc-500">油資、折舊、租金等請換算為每個出勤日的成本；同日多車會分別累加。</p>
         <div className="mb-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-          {vehicleCosts.map((vehicle) => <div key={vehicle.id} className="flex items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-900 dark:bg-zinc-950/50"><span className="text-sm font-medium">{vehicle.name}</span><div className="flex items-center gap-2"><strong className="text-sm">NT$ {Number(vehicle.daily_cost).toLocaleString()}</strong><button onClick={async () => { if (!confirm("刪除此車輛成本設定？")) return; await supabase.from("vehicle_costs").delete().eq("id", vehicle.id); onRefresh(); }} className="text-red-500"><Trash2 className="h-4 w-4" /></button></div></div>)}
+          {vehicleCosts.map((vehicle) => <div key={vehicle.id} className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-900 dark:bg-zinc-950/50"><span className="text-sm font-medium">{vehicle.name}</span><div className="flex items-center gap-2"><span className="text-sm">NT$</span><input aria-label={`${vehicle.name}每日成本`} type="number" min="0" defaultValue={vehicle.daily_cost} onBlur={async (event) => { const dailyCost = Number(event.target.value); if (!Number.isFinite(dailyCost) || dailyCost < 0) { alert("成本不可小於 0"); event.target.value = String(vehicle.daily_cost); return; } const { error } = await supabase.from("vehicle_costs").update({ daily_cost: dailyCost }).eq("id", vehicle.id); if (error) alert(error.message); else onRefresh(); }} className="w-24 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-right text-sm dark:border-zinc-800 dark:bg-black" /><button onClick={async () => { if (!confirm("刪除此車輛成本設定？")) return; const { error } = await supabase.from("vehicle_costs").delete().eq("id", vehicle.id); if (error) alert(error.message); else onRefresh(); }} className="text-red-500"><Trash2 className="h-4 w-4" /></button></div></div>)}
         </div>
         <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-4 sm:flex-row dark:border-zinc-800 dark:bg-zinc-900/50">
           <input value={newVehicleName} onChange={(event) => setNewVehicleName(event.target.value)} placeholder="車輛名稱" className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm dark:border-zinc-800 dark:bg-black" />
