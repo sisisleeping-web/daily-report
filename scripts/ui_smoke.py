@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -21,7 +22,12 @@ def main() -> None:
         page.get_by_role("heading", name="主管登入").wait_for()
         page.wait_for_timeout(600)
         page.screenshot(path=str(output / "admin-mobile.png"), full_page=True)
-        page.get_by_placeholder("請輸入密碼").fill("1234")
+        email = os.environ.get("E2E_ADMIN_EMAIL")
+        password = os.environ.get("E2E_ADMIN_PASSWORD")
+        if not email or not password:
+            raise RuntimeError("E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD are required")
+        page.get_by_placeholder("主管 Email").fill(email)
+        page.get_by_placeholder("請輸入密碼").fill(password)
         page.get_by_role("button", name="登入").click()
         page.get_by_role("heading", name="智慧管理後台").wait_for()
         page.get_by_role("button", name="成本儀表板").click()

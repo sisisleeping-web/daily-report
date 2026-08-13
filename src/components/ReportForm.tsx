@@ -150,41 +150,24 @@ export function ReportForm() {
     setIsSubmittingToDB(true);
     const data = getValues();
     try {
-      // 1. Insert Master Record
-      const { data: logRecord, error: logError } = await supabase
-        .from("construction_logs")
-        .insert([{
+      const { error } = await supabase.rpc("submit_work_log", {
+        payload: {
           report_date: data.date,
           city: data.city,
           names: data.names,
           vehicles: data.vehicles,
           work_content: data.workContent,
           stay_out: data.stayOut === "是",
-          leave_types: data.leaveTypes
-        }])
-        .select()
-        .single();
-
-      if (logError) throw logError;
-
-      // 2. Insert Splits
-      const splitInserts = splits.map(s => ({
-        log_id: logRecord.id,
-        project_name: s.project_name,
-        city: s.city,
-        weight: Number(s.weight),
-        description: s.description
-      }));
-
-      const { error: splitError } = await supabase
-        .from("project_splits")
-        .insert(splitInserts);
-
-      if (splitError) {
-        const { error: rollbackError } = await supabase.from("construction_logs").delete().eq("id", logRecord.id);
-        if (rollbackError) console.error("Failed to roll back incomplete report:", rollbackError);
-        throw splitError;
-      }
+          leave_types: data.leaveTypes,
+          splits: splits.map((split) => ({
+            project_name: split.project_name,
+            city: split.city,
+            weight: Number(split.weight),
+            description: split.description,
+          })),
+        },
+      });
+      if (error) throw error;
 
       alert("報表暨工時成本儲存成功！");
       window.localStorage.removeItem("construction-report-draft-v1");

@@ -10,7 +10,10 @@ import { buildVehicleCostMap, buildWageMap, reportCost, reportMatches, reportsTo
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "monthly" | "settings">("overview");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [overviewMonth, setOverviewMonth] = useState<string>("");
@@ -29,14 +32,32 @@ export default function AdminPage() {
   const [vehicleCosts, setVehicleCosts] = useState<VehicleCost[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    const syncSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const isAdmin = session?.user.app_metadata?.role === "admin";
+      setIsAuthenticated(isAdmin);
+      setAuthLoading(false);
+      if (isAdmin) await fetchData();
+    };
+    void syncSession();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(session?.user.app_metadata?.role === "admin");
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "1234") {
-      setIsAuthenticated(true);
-      fetchData();
-    } else {
-      alert("密碼錯誤");
+    setLoginError(null);
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error || data.user?.app_metadata?.role !== "admin") {
+      if (data.session) await supabase.auth.signOut();
+      setLoginError("帳號、密碼錯誤或此帳號沒有主管權限");
+      return;
     }
+    setIsAuthenticated(true);
+    await fetchData();
   };
 
   const fetchData = async () => {
@@ -86,6 +107,10 @@ export default function AdminPage() {
     }
   };
 
+  if (authLoading) {
+    return <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center text-zinc-500">驗證登入狀態中...</div>;
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans relative flex items-center justify-center p-4 overflow-hidden">
@@ -108,12 +133,24 @@ export default function AdminPage() {
           
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="主管 Email"
+              autoComplete="username"
+              required
+              className="w-full rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 focus:ring-black text-center dark:border-zinc-800 dark:bg-zinc-950/50"
+            />
+            <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="請輸入密碼"
+              autoComplete="current-password"
+              required
               className="w-full rounded-xl border border-zinc-200 bg-white/50 px-4 py-3 text-sm outline-none transition-all focus:border-black focus:ring-1 focus:ring-black text-center dark:border-zinc-800 dark:bg-zinc-950/50"
             />
+            {loginError && <p role="alert" className="text-center text-sm text-red-600">{loginError}</p>}
             <button type="submit" className="w-full rounded-xl bg-black px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:bg-white dark:text-black">
               登入
             </button>
@@ -140,6 +177,9 @@ export default function AdminPage() {
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">成本精算與 AI 拆分檢視</p>
           </div>
           <div className="flex items-center gap-4">
+            <button onClick={async () => { await supabase.auth.signOut(); setIsAuthenticated(false); }} className="text-sm font-medium text-red-600 hover:text-red-700">
+              登出
+            </button>
             <button onClick={fetchData} className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors bg-zinc-100 dark:bg-zinc-800 px-4 py-2 rounded-xl">
               重新整理
             </button>
