@@ -1,34 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
-import { Save, ArrowRight, Loader2, Sparkles, Check, Edit2 } from "lucide-react";
+import { AlertCircle, Check, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-
-type ProjectSplit = {
-  project_name: string;
-  city: string;
-  weight: number;
-  description: string;
-};
-
-type ReportFormData = {
-  date: string;
-  city: string[];
-  names: string[];
-  vehicles: string[];
-  workContent: string;
-  stayOut: string;
-  leaveTypes: string[];
-};
-
-const TAIWAN_CITIES = ["基隆市", "台北市", "新北市", "桃園市", "新竹市", "新竹縣", "苗栗縣", "台中市", "彰化縣", "南投縣", "雲林縣", "嘉義市", "嘉義縣", "台南市", "高雄市", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣"];
-const NAMES_OPTIONS = ["黃瑋琮", "張振嘉"];
-const VEHICLE_OPTIONS = ["無", "RFV-3993 (CR-V)", "4989-MP (VIOS)", "CBZ-2511(Zinger)", "BWD-3925 (貨車)", "BMZ-6372 (Kuga)", "AXZ-2511 (福斯)"];
-const STAY_OUT_OPTIONS = ["是", "否"];
-const LEAVE_TYPE_OPTIONS = ["特休", "事假", "病假", "補休"];
+import type { ProjectSplit, ReportFormData } from "@/lib/report-types";
+import { DEFAULT_ENGINEERS, LEAVE_TYPE_OPTIONS, STAY_OUT_OPTIONS, TAIWAN_CITIES, VEHICLE_OPTIONS } from "@/lib/report-constants";
+import { validateSplits } from "@/lib/report-utils";
 
 function CheckboxGroup({ 
   options, 
@@ -36,9 +16,9 @@ function CheckboxGroup({
   onChange, 
   type = "checkbox" 
 }: { 
-  options: string[], 
+  options: readonly string[],
   selected: string[] | string, 
-  onChange: (val: any) => void,
+  onChange: (val: string[] | string) => void,
   type?: "checkbox" | "radio" 
 }) {
   return (
@@ -80,8 +60,11 @@ export function ReportForm() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [splits, setSplits] = useState<ProjectSplit[]>([]);
   const [isSubmittingToDB, setIsSubmittingToDB] = useState(false);
+  const [engineerOptions, setEngineerOptions] = useState<string[]>(DEFAULT_ENGINEERS);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
 
-  const { register, handleSubmit, control, reset, getValues } = useForm<ReportFormData>({
+  const { register, handleSubmit, control, reset, getValues, watch } = useForm<ReportFormData>({
     defaultValues: {
       date: new Date().toISOString().split("T")[0],
       city: ["台北市"],
@@ -93,7 +76,36 @@ export function ReportForm() {
     },
   });
 
+  useEffect(() => {
+    void fetch("/api/engineers")
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: { engineers?: string[] } | null) => {
+        if (payload?.engineers?.length) setEngineerOptions(payload.engineers);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("construction-report-draft-v1");
+    if (!saved) return;
+    try {
+      const draft = JSON.parse(saved) as Partial<ReportFormData>;
+      reset({ ...getValues(), ...draft });
+      setDraftRestored(true);
+    } catch {
+      window.localStorage.removeItem("construction-report-draft-v1");
+    }
+  }, [getValues, reset]);
+
+  useEffect(() => {
+    const subscription = watch((value) => {
+      window.localStorage.setItem("construction-report-draft-v1", JSON.stringify(value));
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
   const onAnalyze = async (data: ReportFormData) => {
+    setFormError(null);
     setStep(2); // Analysis Step
     try {
       const res = await fetch("/api/analyze", {
@@ -115,7 +127,7 @@ export function ReportForm() {
       }
     } catch (err) {
       console.error(err);
-      alert("AI 分析失敗，請手動確認或重試！將直接進入確認畫面。");
+      setFormError("AI 分析暫時無法使用，已保留內容並切換為手動確認。送出前請檢查案場與權重。");
       // Fallback
       setSplits([{ project_name: "未分類案場", city: Array.isArray(data.city) ? data.city[0] || "" : data.city || "", weight: 1.0, description: data.workContent }]);
       setStep(3);
@@ -129,6 +141,12 @@ export function ReportForm() {
   };
 
   const onFinalSubmit = async () => {
+    const validationError = validateSplits(splits);
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+    setFormError(null);
     setIsSubmittingToDB(true);
     const data = getValues();
     try {
@@ -162,15 +180,21 @@ export function ReportForm() {
         .from("project_splits")
         .insert(splitInserts);
 
-      if (splitError) throw splitError;
+      if (splitError) {
+        const { error: rollbackError } = await supabase.from("construction_logs").delete().eq("id", logRecord.id);
+        if (rollbackError) console.error("Failed to roll back incomplete report:", rollbackError);
+        throw splitError;
+      }
 
       alert("報表暨工時成本儲存成功！");
+      window.localStorage.removeItem("construction-report-draft-v1");
       reset();
       setSplits([]);
       setStep(1);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Supabase error:", err);
-      alert(`儲存失敗: ${err.message || err}`);
+      const message = err instanceof Error ? err.message : String(err);
+      setFormError(`儲存失敗：${message}`);
     } finally {
       setIsSubmittingToDB(false);
     }
@@ -189,6 +213,13 @@ export function ReportForm() {
           ))}
         </div>
       </div>
+
+      {draftRestored && step === 1 && (
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+          <span>已恢復上次未送出的草稿</span>
+          <button type="button" onClick={() => { window.localStorage.removeItem("construction-report-draft-v1"); reset(); setDraftRestored(false); }} className="font-semibold hover:underline">清除草稿</button>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {step === 1 && (
@@ -234,7 +265,7 @@ export function ReportForm() {
                 control={control}
                 rules={{ required: true }}
                 render={({ field }) => (
-                  <CheckboxGroup options={NAMES_OPTIONS} selected={field.value} onChange={field.onChange} />
+                  <CheckboxGroup options={engineerOptions} selected={field.value} onChange={field.onChange} />
                 )}
               />
             </div>
@@ -322,6 +353,11 @@ export function ReportForm() {
             </div>
 
             <div className="flex flex-col gap-4">
+              {formError && (
+                <div role="alert" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {formError}
+                </div>
+              )}
               {splits.map((split, idx) => (
                 <div key={idx} className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950/30 border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
                   <div className="flex items-center justify-between gap-4">
@@ -369,8 +405,20 @@ export function ReportForm() {
                         className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                   </div>
+                  {splits.length > 1 && (
+                    <button type="button" onClick={() => setSplits(splits.filter((_, splitIndex) => splitIndex !== idx))} className="inline-flex items-center gap-1 self-end text-xs font-medium text-red-600 hover:text-red-700">
+                      <Trash2 className="h-3.5 w-3.5" /> 移除此案場
+                    </button>
+                  )}
                 </div>
               ))}
+
+              <div className="flex items-center justify-between rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
+                <span className="font-medium">工時權重合計</span>
+                <span className={cn("font-mono font-bold", Math.abs(splits.reduce((sum, split) => sum + split.weight, 0) - 1) < 0.001 ? "text-emerald-600" : "text-red-600")}>
+                  {splits.reduce((sum, split) => sum + split.weight, 0).toFixed(2)} / 1.00
+                </span>
+              </div>
               
               <button 
                 type="button" 

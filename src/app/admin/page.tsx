@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Lock, ArrowLeft, Users, Car, CheckCircle2, Tent, CalendarClock, Settings, BarChart3, List, Save, Trash2, Plus, Edit, X } from "lucide-react";
+import { Lock, ArrowLeft, Users, Car, CheckCircle2, Tent, CalendarClock, Settings, BarChart3, List, Save, Trash2, Plus, Edit, X, Download, Search } from "lucide-react";
+import type { ConstructionLog, Engineer, ProjectSplit } from "@/lib/report-types";
+import { reportMatches, reportsToCsv } from "@/lib/report-utils";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -13,8 +15,9 @@ export default function AdminPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [overviewMonth, setOverviewMonth] = useState<string>("");
 
-  const [reports, setReports] = useState<any[]>([]);
-  const [editingReport, setEditingReport] = useState<any>(null);
+  const [reports, setReports] = useState<ConstructionLog[]>([]);
+  const [editingReport, setEditingReport] = useState<ConstructionLog | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const months = Array.from(new Set(reports.map(r => r.report_date?.substring(0, 7)).filter(Boolean))).sort().reverse();
@@ -22,7 +25,7 @@ export default function AdminPage() {
       setSelectedMonth(months[0]);
     }
   }, [reports, selectedMonth]);
-  const [engineers, setEngineers] = useState<any[]>([]);
+  const [engineers, setEngineers] = useState<Engineer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -72,9 +75,9 @@ export default function AdminPage() {
       if (error) throw error;
       alert("刪除成功！");
       fetchData(); // Refresh the list
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert("刪除失敗：" + (err.message || err));
+      alert("刪除失敗：" + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -164,7 +167,12 @@ export default function AdminPage() {
           <AnimatePresence mode="wait">
             {activeTab === "overview" && (
               <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-6">
-                <div className="flex justify-end mb-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
+                  <label className="relative block w-full sm:max-w-sm">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                    <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="搜尋日期、人員、案場或施工內容" className="w-full rounded-xl border border-zinc-200 bg-white/70 py-2 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-black dark:border-zinc-800 dark:bg-zinc-900/70 dark:focus:ring-white" />
+                  </label>
+                  <div className="flex gap-2">
                   <select 
                     value={overviewMonth} 
                     onChange={e => setOverviewMonth(e.target.value)}
@@ -175,11 +183,24 @@ export default function AdminPage() {
                       <option key={String(m)} value={String(m)}>{m}</option>
                     ))}
                   </select>
+                  <button type="button" onClick={() => {
+                    const filtered = reports.filter((report) => (!overviewMonth || report.report_date?.startsWith(overviewMonth)) && reportMatches(report, searchQuery));
+                    const blob = new Blob([reportsToCsv(filtered, engineers)], { type: "text/csv;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    const anchor = document.createElement("a");
+                    anchor.href = url;
+                    anchor.download = `工地日報-${overviewMonth || "全部"}.csv`;
+                    anchor.click();
+                    URL.revokeObjectURL(url);
+                  }} className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black">
+                    <Download className="h-4 w-4" /> 匯出 CSV
+                  </button>
+                  </div>
                 </div>
-                {reports.filter(r => !overviewMonth || r.report_date?.startsWith(overviewMonth)).length === 0 ? (
+                {reports.filter(r => (!overviewMonth || r.report_date?.startsWith(overviewMonth)) && reportMatches(r, searchQuery)).length === 0 ? (
                   <div className="text-center py-20 text-zinc-500 bg-white/50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/50 backdrop-blur-xl">目前沒有任何日誌記錄</div>
                 ) : (
-                  reports.filter(r => !overviewMonth || r.report_date?.startsWith(overviewMonth)).map((report, idx) => (
+                  reports.filter(r => (!overviewMonth || r.report_date?.startsWith(overviewMonth)) && reportMatches(r, searchQuery)).map((report, idx) => (
                     <div key={report.id || idx} className="rounded-3xl bg-white/80 p-6 shadow-sm border border-zinc-200 dark:bg-zinc-900/80 dark:border-zinc-800/50 backdrop-blur-xl flex flex-col gap-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4 gap-4">
                         <div className="flex items-center gap-3">
@@ -231,7 +252,7 @@ export default function AdminPage() {
                          <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 mt-2">
                  <h4 className="border-t border-zinc-100 dark:border-zinc-800 pt-6 mt-4 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-4">AI 案場拆分明細</h4>
                  <div className="grid gap-3 sm:grid-cols-2">
-                   {report.project_splits.map((s: any) => (
+                   {report.project_splits.map((s: ProjectSplit) => (
                      <div key={s.id} className="p-3 border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl">
                        <div className="flex justify-between items-center mb-2">
                          <span className="text-sm font-bold text-blue-900 dark:text-blue-300">
@@ -285,7 +306,7 @@ export default function AdminPage() {
          
          reports.forEach(r => {
             const dailyCost = (r.names || []).reduce((acc: number, name: string) => acc + (wageMap[name] || 0), 0) + (r.stay_out ? 250 : 0);
-            (r.project_splits || []).forEach((s: any) => {
+            (r.project_splits || []).forEach((s: ProjectSplit) => {
               const splitCost = dailyCost * Number(s.weight);
               let targetKey = s.project_name || "未命名案場";
 
@@ -396,8 +417,8 @@ export default function AdminPage() {
                     });
 
                     const projectsInReport = new Set<string>();
-                    (r.project_splits || []).forEach((s: any) => {
-                       let targetKey = s.project_name || "未命名案場";
+                    (r.project_splits || []).forEach((s: ProjectSplit) => {
+                       const targetKey = s.project_name || "未命名案場";
                        const existingKeys = Object.keys(projectCount).concat(Array.from(projectsInReport));
                        let found = false;
                        for (const exKey of existingKeys) {
@@ -500,7 +521,7 @@ export default function AdminPage() {
   );
 }
 
-function SettingsPanel({ engineers, onRefresh }: { engineers: any[], onRefresh: () => void }) {
+function SettingsPanel({ engineers, onRefresh }: { engineers: Engineer[], onRefresh: () => void }) {
   const [newEngName, setNewEngName] = useState("");
   const [newEngWage, setNewEngWage] = useState("");
 
@@ -525,7 +546,7 @@ function SettingsPanel({ engineers, onRefresh }: { engineers: any[], onRefresh: 
     onRefresh();
   };
 
-  const startEditEng = (e: any) => {
+  const startEditEng = (e: Engineer) => {
     setEditingEngId(e.id);
     setEditEngName(e.name);
     setEditEngWage(e.daily_wage?.toString() || "0");
@@ -603,7 +624,7 @@ function SettingsPanel({ engineers, onRefresh }: { engineers: any[], onRefresh: 
   );
 }
 
-function EditReportModal({ report, onClose, onRefresh }: { report: any, onClose: () => void, onRefresh: () => void }) {
+function EditReportModal({ report, onClose, onRefresh }: { report: ConstructionLog, onClose: () => void, onRefresh: () => void }) {
   const [date, setDate] = useState(report.report_date || "");
   const [cityStr, setCityStr] = useState((report.city || []).join(", "));
   const [stayOut, setStayOut] = useState(!!report.stay_out);
@@ -611,8 +632,6 @@ function EditReportModal({ report, onClose, onRefresh }: { report: any, onClose:
   const [vehiclesStr, setVehiclesStr] = useState((report.vehicles || []).join(", "));
   const [workContent, setWorkContent] = useState(report.work_content || "");
   const [isSaving, setIsSaving] = useState(false);
-
-  const TAIWAN_CITIES = ["基隆市", "台北市", "新北市", "桃園市", "新竹市", "新竹縣", "苗栗縣", "台中市", "彰化縣", "南投縣", "雲林縣", "嘉義市", "嘉義縣", "台南市", "高雄市", "屏東縣", "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣"];
 
   const handleSave = async () => {
     setIsSaving(true);

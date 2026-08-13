@@ -1,99 +1,77 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { TAIWAN_CITIES } from "@/lib/report-constants";
+import type { ProjectSplit } from "@/lib/report-types";
+import { validateSplits } from "@/lib/report-utils";
 
-// If you're using GitHub Models (Copilot), we point to Azure's inference endpoint
-// and we assume you have stored the token in PROCESS.ENV.GITHUB_TOKEN
 const token = process.env.GITHUB_TOKEN;
-
-if (!token) {
-  console.warn("GITHUB_TOKEN is not set. The LLM analysis API might fail if not provided in the environment.");
-}
-
 const client = new OpenAI({
   baseURL: "https://models.inference.ai.azure.com",
   apiKey: token,
 });
 
 const SYSTEM_PROMPT = `
-You are a construction log assistant.
-The user will input their "Work Content" (施工內容) describing their day.
-Your job is to parse this content and extract the projects they worked on, 
-and estimate the weight (time proportion, totaling 1.0) for each project.
-
+You are a construction log assistant. Parse the user's work content into project splits.
+Return only one valid JSON object with this exact shape:
+{"splits":[{"project_name":"name from user input","city":"one supplied city","weight":0.5,"description":"work from user input"}]}
 Rules:
-1. ONLY return a valid JSON object. Do not wrap in markdown \`\`\`json.
-2. If there are known existing projects in the firm, try to match the names.
-3. The format MUST be exactly:
-{
-  "splits": [
-    {
-      "project_name": "extracted project name",
-      "city": "the specific city this project is in",
-      "weight": 0.5,
-      "description": "the specific work done for this project"
-    }
-  ]
-}
-4. The sum of weights should equal 1.0. If they just mention one project, weight is 1.0.
-
-Example Text:
-"早上在南港軟體園區拉網路線，下午去信義A13修冷氣"
-
-Result:
-{
-  "splits": [
-    {
-      "project_name": "南港軟體園區",
-      "city": "台北市",
-      "weight": 0.5,
-      "description": "拉網路線"
-    },
-    {
-      "project_name": "信義A13",
-      "city": "台北市",
-      "weight": 0.5,
-      "description": "修冷氣"
-    }
-  ]
-}
+1. Weights must be numbers greater than 0 and total exactly 1.0.
+2. Never invent a project, location, activity, or factual detail.
+3. City must be one of the supplied cities.
+4. Keep descriptions concise and faithful to the user's text.
 `;
 
 export async function POST(req: Request) {
   try {
-    const { workContent, city } = await req.json();
-
-    if (!workContent) {
-      return NextResponse.json({ error: "Missing workContent" }, { status: 400 });
+    const body: unknown = await req.json();
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
-
-    const dynamicPrompt = `${SYSTEM_PROMPT}
-[Additional Context]
-The user is currently reporting work done in the following city/county: ${Array.isArray(city) ? city.join(', ') : (city || "Unknown")}.
-When extracting the project_name, you should consider this location context to make it more precise (e.g., if they say "School", you might infer it's a school in that specific city if that helps).
-`;
+    const { workContent, city } = body as { workContent?: unknown; city?: unknown };
+    if (typeof workContent !== "string" || !workContent.trim()) {
+      return NextResponse.json({ error: "施工內容不可空白" }, { status: 400 });
+    }
+    if (workContent.length > 5000) {
+      return NextResponse.json({ error: "施工內容不可超過 5,000 字" }, { status: 400 });
+    }
+    const cities = Array.isArray(city)
+      ? city.filter((item): item is string => typeof item === "string" && TAIWAN_CITIES.includes(item as (typeof TAIWAN_CITIES)[number]))
+      : [];
+    if (cities.length === 0) return NextResponse.json({ error: "請選擇有效縣市" }, { status: 400 });
+    if (!token) return NextResponse.json({ error: "AI 分析服務尚未設定" }, { status: 503 });
 
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: dynamicPrompt },
-        { role: "user", content: workContent }
+        { role: "system", content: `${SYSTEM_PROMPT}\nSupplied cities: ${cities.join(", ")}` },
+        { role: "user", content: workContent.trim() },
       ],
       temperature: 0,
     });
+    const completionText = response.choices[0]?.message.content;
+    if (!completionText) throw new Error("AI 沒有回傳內容");
 
-    const completionText = response.choices[0].message.content;
-    
-    if (!completionText) {
-       throw new Error("No completion from model");
+    const cleanJson = completionText.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
+    const result: unknown = JSON.parse(cleanJson);
+    if (!result || typeof result !== "object" || !Array.isArray((result as { splits?: unknown }).splits)) {
+      throw new Error("AI 回傳格式不完整");
     }
-
-    // Try to parse the content as JSON. Sometimes the model outputs markdown blocks anyway.
-    const cleanJSON = completionText.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
-    const result = JSON.parse(cleanJSON);
-
-    return NextResponse.json(result);
-  } catch (err: any) {
+    const splits = (result as { splits: unknown[] }).splits.map((item): ProjectSplit => {
+      if (!item || typeof item !== "object") throw new Error("AI 案場資料格式錯誤");
+      const split = item as Record<string, unknown>;
+      return {
+        project_name: typeof split.project_name === "string" ? split.project_name.trim() : "",
+        city: typeof split.city === "string" && cities.includes(split.city) ? split.city : cities[0],
+        weight: Number(split.weight),
+        description: typeof split.description === "string" ? split.description.trim() : "",
+      };
+    });
+    const splitError = validateSplits(splits);
+    if (splitError) throw new Error(`AI 拆分驗證失敗：${splitError}`);
+    return NextResponse.json({ splits });
+  } catch (err: unknown) {
     console.error("LLM Parse Error:", err);
-    return NextResponse.json({ error: err.message || "Failed to analyze" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Failed to analyze";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
